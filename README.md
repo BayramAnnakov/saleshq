@@ -195,3 +195,8 @@ curl -X POST -H "Content-Type: application/json" \
 -   **File Attachments:** Allow users to share files in chats.
 
 This application provides a client-side foundation for a real-time sales chat and notification system.
+
+
+```bash
+npm run start
+```

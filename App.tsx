@@ -96,8 +96,15 @@ const App: React.FC = () => {
     onConnectionStatusChange: handleWsConnectionChange,
   });
 
-  // Initial WebSocket connection on mount
+  // Initial WebSocket connection on mount (guarded to run only once even under StrictMode)
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Prevent multiple initial connects (e.g. StrictMode remount)
+      if ((window as any).__APP_WS_CONNECTED__) {
+        return;
+      }
+      (window as any).__APP_WS_CONNECTED__ = true;
+    }
     console.log(`[App] Connecting to WebSocket server at ${WEBSOCKET_SERVER_URL}`);
     connect(WEBSOCKET_SERVER_URL);
   }, [connect, WEBSOCKET_SERVER_URL]);

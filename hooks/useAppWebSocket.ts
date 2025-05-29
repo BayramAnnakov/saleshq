@@ -77,16 +77,16 @@ export const useAppWebSocket = ({
 
   const connect = useCallback((url: string) => {
     const current = socketRef.current;
-    if (current && (current.readyState === WebSocket.OPEN || current.readyState === WebSocket.CONNECTING)) {
-      console.warn('[WS] Already connected or connecting.');
-      return;
+    // Close existing socket before establishing a new one (to avoid duplicates)
+    if (current && current.readyState !== WebSocket.CLOSED) {
+      console.log('[WS] Closing existing socket before reconnect.');
+      current.close(1000, 'Reconnecting');
     }
     console.log(`[WS] Attempting to connect to ${url}`);
     setLastError(null);
     const ws = new WebSocket(url);
-    // Track in ref immediately
+    // Track in ref so we can close it later
     socketRef.current = ws;
-    setSocket(ws);
 
     ws.onopen = () => {
       console.log('[WS] Connected.');
@@ -141,6 +141,8 @@ export const useAppWebSocket = ({
       console.log(`[WS] Disconnected. Code: ${event.code}, Reason: "${event.reason}"`);
       setIsConnected(false);
       setSocket(null); // Allow re-connection by creating a new socket instance
+      // Clear ref since socket is closed
+      socketRef.current = null;
       onConnectionStatusChangeRef.current?.(false);
       if (!event.wasClean) {
         const errorMsg = `Connection closed unexpectedly (Code: ${event.code}).`;
@@ -153,6 +155,7 @@ export const useAppWebSocket = ({
       }
     };
 
+    // Store the new socket in state to trigger cleanup effect
     setSocket(ws);
   }, []); // no dependencies; uses socketRef and refs for latest values
 
