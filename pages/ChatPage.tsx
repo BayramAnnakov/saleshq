@@ -1,8 +1,9 @@
+
 import React, { useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Channel, Message, User } from '../types';
 import ChannelList from '../components/ChannelList';
-import ChatWindow from '../components/ChatWindow';
+import { ChatWindow } from '../components/ChatWindow'; // Changed to named import
 import { ArrowLeftIcon } from '../constants';
 
 interface ChatPageProps {
@@ -13,22 +14,23 @@ interface ChatPageProps {
   onSendMessage: (channelId: string, text: string) => void;
   currentUser: User;
   users: User[];
+  isConnected: boolean; 
 }
 
 const ChatPage: React.FC<ChatPageProps> = ({
   channels,
   messages,
-  activeChannelId, // This is the state from App.tsx
+  activeChannelId, 
   onSelectChannel,
   onSendMessage,
   currentUser,
-  users
+  users,
+  isConnected 
 }) => {
   const { channelId: urlChannelId } = useParams<{ channelId?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Determine the effective active channel ID based on URL or App state
   const effectiveActiveChannelId = useMemo(() => {
     if (urlChannelId && channels.find(c => c.id === urlChannelId)) {
       return urlChannelId;
@@ -40,18 +42,15 @@ const ChatPage: React.FC<ChatPageProps> = ({
     let newActiveIdToSet: string | null = null;
 
     if (urlChannelId && channels.find(c => c.id === urlChannelId)) {
-      // If URL specifies a valid channel, make it active
       if (urlChannelId !== activeChannelId) {
         newActiveIdToSet = urlChannelId;
       }
     } else if (!effectiveActiveChannelId && channels.length > 0) {
-      // If no channel is effectively active (neither in URL nor app state), select a default
       const firstUnreadChannel = channels.find(c => c.unreadCount > 0);
-      const targetChannel = firstUnreadChannel || channels[0]; // Default to first channel if no unread
+      const targetChannel = firstUnreadChannel || channels[0]; 
       
       if (targetChannel) {
         newActiveIdToSet = targetChannel.id;
-        // Update URL to reflect this default selection, only if not already on a /chat/* path
         if (!location.pathname.startsWith(`/chat/${targetChannel.id}`)) {
            navigate(`/chat/${targetChannel.id}`, { replace: true });
         }
@@ -68,20 +67,16 @@ const ChatPage: React.FC<ChatPageProps> = ({
   const activeChannelMessages = effectiveActiveChannelId ? messages[effectiveActiveChannelId] || [] : [];
 
   const handleChannelSelectAndNavigate = (newChannelId: string) => {
-    // onSelectChannel will be called by the useEffect when the URL changes,
-    // or if already called, this ensures navigation.
     if (newChannelId !== effectiveActiveChannelId) {
-        navigate(`/chat/${newChannelId}`); // Let useEffect handle onSelectChannel
+        navigate(`/chat/${newChannelId}`); 
     } else {
-        // If clicking the already active channel, still ensure it's marked read
         onSelectChannel(newChannelId);
     }
   };
   
-  // If channels haven't loaded yet or are empty, show a loading/empty state.
   if (channels.length === 0) {
     return (
-      <div className="flex h-screen w-screen bg-gray-100 items-center justify-center">
+      <div className="flex flex-grow items-center justify-center bg-gray-100"> {/* flex-grow for empty state */}
         <div className="text-center p-8">
            <svg className="mx-auto h-16 w-16 text-gray-400 animate-spin mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -103,8 +98,7 @@ const ChatPage: React.FC<ChatPageProps> = ({
   }
 
   return (
-    <div className="flex h-screen w-screen bg-gray-100">
-      {/* Sidebar for channels */}
+    <div className="flex flex-grow bg-gray-100 overflow-hidden"> {/* flex-grow for main content, overflow-hidden */}
       <div className="w-full sm:w-1/3 md:w-1/4 bg-slate-800 text-slate-100 flex flex-col border-r border-slate-700 shadow-lg">
         <div className="p-4 border-b border-slate-700 flex items-center space-x-3 sticky top-0 bg-slate-800 z-10">
            <button 
@@ -118,21 +112,21 @@ const ChatPage: React.FC<ChatPageProps> = ({
         </div>
         <ChannelList
           channels={channels}
-          activeChannelId={effectiveActiveChannelId} // Use effective ID for highlighting
+          activeChannelId={effectiveActiveChannelId} 
           onSelectChannel={handleChannelSelectAndNavigate}
         />
       </div>
 
-      {/* Main chat window */}
       <div className="flex-1 flex flex-col bg-white overflow-hidden">
         {currentActiveChannelDetails && currentUser ? (
           <ChatWindow
-            key={currentActiveChannelDetails.id} // Add key to force re-mount on channel change for scroll reset
+            key={currentActiveChannelDetails.id} 
             channel={currentActiveChannelDetails}
             messages={activeChannelMessages}
             onSendMessage={onSendMessage}
             currentUser={currentUser}
             users={users}
+            isConnected={isConnected} 
           />
         ) : (
           <div className="flex-1 flex items-center justify-center p-4">

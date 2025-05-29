@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, JSX } from 'react'; // Added JSX
 import { Channel, Message, User } from '../types';
-import { SendIcon, CURRENT_USER_ID, UsersIcon } from '../constants'; // Added UsersIcon for member count
+import { SendIcon, CURRENT_USER_ID, UsersIcon } from '../constants';
 
 interface ChatMessageItemProps {
   message: Message;
@@ -9,9 +9,8 @@ interface ChatMessageItemProps {
   sender?: User;
 }
 
-const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, isCurrentUser, sender }) => {
+const ChatMessageItem = ({ message, isCurrentUser, sender }: ChatMessageItemProps): JSX.Element => { // Changed typing
   const senderName = isCurrentUser ? 'You' : sender?.name || 'Unknown User';
-  // Use a fallback avatar if sender specific one isn't available, differentiating current user.
   const defaultAvatarSeed = isCurrentUser ? CURRENT_USER_ID : (sender?.id || message.senderId);
   const avatarUrl = sender?.avatarUrl || `https://picsum.photos/seed/${defaultAvatarSeed}/40/40`;
 
@@ -22,7 +21,7 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, isCurrentUse
           src={avatarUrl}
           alt={senderName} 
           className="w-8 h-8 rounded-full mr-3 object-cover flex-shrink-0"
-          onError={(e) => (e.currentTarget.src = `https://picsum.photos/seed/error/40/40`)} // Fallback for broken image links
+          onError={(e) => (e.currentTarget.src = `https://picsum.photos/seed/error/40/40`)}
         />
       )}
       <div 
@@ -49,15 +48,16 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, isCurrentUse
 
 interface ChatInputBarProps {
   onSendMessage: (text: string) => void;
+  isConnected: boolean; 
 }
 
-const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSendMessage }) => {
+const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSendMessage, isConnected }) => {
   const [inputText, setInputText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (inputText.trim()) {
+    if (inputText.trim() && isConnected) { 
       onSendMessage(inputText);
       setInputText('');
       inputRef.current?.focus();
@@ -71,15 +71,16 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSendMessage }) => {
         type="text"
         value={inputText}
         onChange={(e) => setInputText(e.target.value)}
-        placeholder="Type your message..."
+        placeholder={isConnected ? "Type your message..." : "Connecting to chat..."}
         aria-label="Chat message input"
         className="flex-1 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition-shadow text-sm"
+        disabled={!isConnected} 
       />
       <button
         type="submit"
         aria-label="Send message"
         className="px-4 py-3 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50 disabled:opacity-60 disabled:cursor-not-allowed"
-        disabled={!inputText.trim()}
+        disabled={!inputText.trim() || !isConnected} 
       >
         <SendIcon className="w-5 h-5" />
       </button>
@@ -94,9 +95,10 @@ interface ChatWindowProps {
   onSendMessage: (channelId: string, text: string) => void;
   currentUser: User;
   users: User[];
+  isConnected: boolean; 
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ channel, messages, onSendMessage, currentUser, users }) => {
+export const ChatWindow: React.FC<ChatWindowProps> = ({ channel, messages, onSendMessage, currentUser, users, isConnected }) => { // Changed to named export
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
@@ -104,11 +106,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ channel, messages, onSendMessag
   };
 
   useEffect(() => {
-    scrollToBottom("auto"); // Initial scroll without animation
-  }, [channel.id]); // Scroll to bottom when channel changes
+    scrollToBottom("auto");
+  }, [channel.id]);
 
   useEffect(() => {
-    scrollToBottom(); // Smooth scroll for new messages
+    scrollToBottom();
   }, [messages]);
   
   const getUserById = (userId: string): User | undefined => {
@@ -116,8 +118,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ channel, messages, onSendMessag
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full max-h-screen">
-      {/* Chat Header */}
+    <div className="flex-1 flex flex-col h-full max-h-screen"> {/* Ensure ChatWindow takes full height of its container */}
       <header className="p-3 sm:p-4 border-b border-slate-200 bg-white flex items-center space-x-3 sticky top-0 z-10 shadow-sm">
         <img 
           src={channel.avatarUrl || `https://picsum.photos/seed/${channel.id}/48/48`}
@@ -137,7 +138,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ channel, messages, onSendMessag
         </div>
       </header>
 
-      {/* Messages Area */}
       <main className="flex-1 p-3 sm:p-4 overflow-y-auto bg-slate-50 custom-scrollbar">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-slate-500">
@@ -159,10 +159,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ channel, messages, onSendMessag
         <div ref={messagesEndRef} />
       </main>
 
-      {/* Input Bar */}
-      <ChatInputBar onSendMessage={(text) => onSendMessage(channel.id, text)} />
+      <ChatInputBar 
+        onSendMessage={(text) => onSendMessage(channel.id, text)} 
+        isConnected={isConnected} 
+      />
     </div>
   );
 };
 
-export default ChatWindow;
+// Removed 'export default ChatWindow;' as it's now a named export directly on the component definition.

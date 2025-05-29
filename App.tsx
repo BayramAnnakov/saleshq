@@ -2,28 +2,118 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Channel, Message, User } from './types';
-import { INITIAL_CHANNELS, ALL_MOCK_USERS, CURRENT_USER_ID, MOCK_SALES_TEAM_USERS } from './constants';
+import { INITIAL_CHANNELS, ALL_MOCK_USERS, CURRENT_USER_ID } from './constants';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
+import { useAppWebSocket } from './hooks/useAppWebSocket';
 
-// --- TOGGLE FOR MESSAGE SIMULATION ---
-const ENABLE_MESSAGE_SIMULATION = false; // Set to true to enable automatic test message sending
+// --- CONFIGURATION ---
+const getWebSocketServerUrl = (): string => {
+  try {
+    // Check if import.meta and import.meta.env are defined
+    if (typeof import.meta !== 'undefined' && typeof import.meta.env !== 'undefined') {
+      return import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8080';
+    }
+  } catch (e) {
+    // Log error if any occurs during access, though the check above should prevent most.
+    console.warn("Could not access import.meta.env for WebSocket URL. Using default.", e);
+  }
+  // Fallback default if import.meta.env or VITE_WEBSOCKET_URL is not available
+  return 'ws://localhost:8080';
+};
+const WEBSOCKET_SERVER_URL = getWebSocketServerUrl();
 
 const App: React.FC = () => {
   const [channels, setChannels] = useState<Channel[]>(INITIAL_CHANNELS);
   const [messages, setMessages] = useState<Record<string, Message[]>>(() => {
     const initialMessages: Record<string, Message[]> = {};
     INITIAL_CHANNELS.forEach(channel => {
-      initialMessages[channel.id] = []; // Start with an empty array of messages
+      initialMessages[channel.id] = [];
     });
     return initialMessages;
   });
   
   const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const [wsStatusDisplay, setWsStatusDisplay] = useState<string>('Connecting...'); // For UI display
 
-  // This remains useful for a global notification indicator if needed elsewhere,
-  // but dashboard cards will show per-channel counts.
-  const totalUnreadCount = channels.reduce((sum, channel) => sum + channel.unreadCount, 0);
+  const handleIncomingMessage = useCallback((newMessage: Message) => {
+    setMessages(prevMsgs => ({
+      ...prevMsgs,
+      [newMessage.channelId]: [...(prevMsgs[newMessage.channelId] || []), newMessage],
+    }));
+
+    setChannels(prevChs => 
+      prevChs.map(ch => {
+        if (ch.id === newMessage.channelId) {
+          let newUnreadCount = ch.unreadCount;
+          // Only increment unread if the message is not for the currently active channel
+          // OR if it is for the active channel BUT not from the current user.
+          if (newMessage.channelId !== activeChannelId) {
+             if(newMessage.senderId !== CURRENT_USER_ID) newUnreadCount += 1;
+          } else { // Message is for the active channel
+            if(newMessage.senderId !== CURRENT_USER_ID) {
+                // If user is viewing the active channel, new messages from others are "unread" until explicitly marked.
+                // The ChannelList UI will show this. DashboardPage will reflect this too.
+                // markChannelAsRead called by onSelectChannel will clear it.
+                newUnreadCount += 1;
+            }
+          }
+          
+          return {
+            ...ch,
+            lastMessagePreview: newMessage.text,
+            lastMessageTimestamp: newMessage.timestamp,
+            unreadCount: newUnreadCount,
+          };
+        }
+        return ch;
+      })
+    );
+  }, [activeChannelId]);
+
+  const handleWsError = useCallback((errorMsg: string) => {
+    // This state is used for the visual banner
+    setWsStatusDisplay(`Error: ${errorMsg}`);
+  }, []);
+
+  const handleWsConnectionChange = useCallback((connected: boolean) => {
+     // This state is used for the visual banner
+    setWsStatusDisplay(connected ? 'Connected' : 'Disconnected');
+    if (!connected && !lastError) { // if disconnect was clean, show disconnected.
+        setWsStatusDisplay('Disconnected. Attempting to reconnect...');
+    }
+  }, []); // lastError is not available here, hook manages its own state
+
+  const { 
+    isConnected, 
+    lastError, // This is the raw error from the hook
+    connect, 
+    disconnect, 
+    sendMessageToServer 
+  } = useAppWebSocket({
+    onMessageReceived: handleIncomingMessage,
+    onErrorReceived: handleWsError, // Hook's internal lastError is separate from wsStatusDisplay
+    onConnectionStatusChange: handleWsConnectionChange,
+  });
+
+  // Initial WebSocket connection on mount
+  useEffect(() => {
+    console.log(`[App] Connecting to WebSocket server at ${WEBSOCKET_SERVER_URL}`);
+    connect(WEBSOCKET_SERVER_URL);
+  }, [connect, WEBSOCKET_SERVER_URL]);
+
+  // Auto-reconnect when disconnected without error
+  useEffect(() => {
+    if (!isConnected && !lastError) {
+      console.log('[App] Scheduling reconnect attempt');
+      const timeout = setTimeout(() => {
+        console.log('[App] Reconnecting WebSocket...');
+        setWsStatusDisplay('Attempting to reconnect...');
+        connect(WEBSOCKET_SERVER_URL);
+      }, 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [isConnected, lastError, connect, WEBSOCKET_SERVER_URL]);
 
   const markChannelAsRead = useCallback((channelId: string) => {
     setMessages(prevMessages => {
@@ -50,160 +140,104 @@ const App: React.FC = () => {
 
   const handleSendMessage = useCallback((channelId: string, text: string) => {
     if (!text.trim()) return;
+    if (!isConnected) {
+      console.warn("Cannot send message, WebSocket not connected.");
+      handleWsError("Not connected. Cannot send message.");
+      return;
+    }
+    sendMessageToServer(channelId, text);
 
-    const newMessage: Message = {
-      id: `msg-user-${Date.now()}`,
-      channelId,
-      senderId: CURRENT_USER_ID,
-      text,
-      timestamp: Date.now(),
-      isRead: true, 
-    };
-
-    setMessages(prev => ({
-      ...prev,
-      [channelId]: [...(prev[channelId] || []), newMessage],
-    }));
     setChannels(prev => prev.map(ch => 
-      ch.id === channelId ? { ...ch, lastMessagePreview: `You: ${text}`, lastMessageTimestamp: newMessage.timestamp, unreadCount: 0 } : ch
+      ch.id === channelId ? { 
+        ...ch, 
+        lastMessagePreview: `You: ${text}`, 
+        lastMessageTimestamp: Date.now(), 
+      } : ch
     ));
-    // If the current user sends a message to the active channel, ensure its unread count remains 0 or is set to 0.
     if (channelId === activeChannelId) {
-      markChannelAsRead(channelId);
+        markChannelAsRead(channelId);
     }
 
-  }, [activeChannelId, markChannelAsRead]);
-
-  // Simulate new messages from sales team members
-  useEffect(() => {
-    if (!ENABLE_MESSAGE_SIMULATION) {
-      return; // Exit if simulation is disabled
-    }
-
-    const intervalId = setInterval(() => {
-      setChannels(prevChannels => {
-        const channelsCopy = [...prevChannels];
-        // Pick a random channel that is NOT the currently active one (if any)
-        const availableChannelsToReceiveMessage = channelsCopy.filter(ch => ch.id !== activeChannelId);
-        if (availableChannelsToReceiveMessage.length === 0) return prevChannels; // No channels to send to or only active one
-
-        const targetChannel = availableChannelsToReceiveMessage[Math.floor(Math.random() * availableChannelsToReceiveMessage.length)];
-        
-        // Pick a random sales team member (excluding current user)
-        const potentialSenders = MOCK_SALES_TEAM_USERS.filter(u => u.id !== CURRENT_USER_ID && targetChannel.members.find(m => m.id === u.id));
-        if (potentialSenders.length === 0) return prevChannels; // No valid sender for this channel
-        
-        const sender = potentialSenders[Math.floor(Math.random() * potentialSenders.length)];
-
-        // Generate sales-relevant message based on channel
-        let newMessageText = "Just a quick update.";
-        switch(targetChannel.id) {
-          case 'channel_leads':
-            newMessageText = [
-              "New lead from 'BigCorp Inc.' - looks promising!", 
-              "Followed up with 'StartupX', they requested a demo.",
-              "Can someone take a look at the lead from the webinar?",
-              "Assigned 'Lead Y' to Emily."
-            ][Math.floor(Math.random() * 4)];
-            break;
-          case 'channel_followups':
-            newMessageText = [
-              "Reminder: Call with 'ClientA' scheduled for tomorrow at 10 AM.",
-              "Just finished my follow-up with 'TechSolutions', notes are in the CRM.",
-              "Who is handling the follow-up for 'OldLead Co.'?",
-              "SalesBot: Automated follow-up email sent to 'ProspectZ'."
-            ][Math.floor(Math.random() * 4)];
-            if (sender.name.includes("SalesBot")) newMessageText = "SalesBot: Automated follow-up sequence initiated for 'Zeta Corp'.";
-            break;
-          case 'channel_proposals':
-            newMessageText = [
-              "Proposal for 'Omega Ltd.' has been sent. Fingers crossed!",
-              "Received feedback on the 'Alpha Group' proposal, need to revise section 3.",
-              "Can we get a status update on the 'Gamma Project' proposal?",
-              "Draft proposal for 'Delta Inc.' ready for review."
-            ][Math.floor(Math.random() * 4)];
-            break;
-          case 'channel_alerts':
-            newMessageText = [
-              "Urgent: Client 'Critical Systems' reporting an issue with their latest invoice.",
-              "SalesBot: High churn risk detected for 'Unstable Corp'.",
-              "Need immediate assistance with 'VIP Client' request.",
-              "System Alert: Quota for API calls nearing limit."
-            ][Math.floor(Math.random() * 4)];
-            if (sender.name.includes("SalesBot")) newMessageText = "SalesBot: Payment failed for 'Client Theta'. Account suspended.";
-            break;
-        }
-
-        const newMessage: Message = {
-          id: `msg-sim-${Date.now()}`,
-          channelId: targetChannel.id,
-          senderId: sender.id,
-          text: newMessageText,
-          timestamp: Date.now(),
-          isRead: false, // New messages are unread
-        };
-
-        setMessages(prevMsgs => ({
-          ...prevMsgs,
-          [targetChannel.id]: [...(prevMsgs[targetChannel.id] || []), newMessage],
-        }));
-        
-        return channelsCopy.map(ch =>
-          ch.id === targetChannel.id
-            ? {
-                ...ch,
-                unreadCount: ch.unreadCount + 1,
-                lastMessagePreview: newMessage.text,
-                lastMessageTimestamp: newMessage.timestamp,
-              }
-            : ch
-        );
-      });
-    }, Math.random() * 5000 + 15000); // Simulate a new message every 15-20 seconds
-
-    return () => clearInterval(intervalId);
-  }, [activeChannelId]); // Rerun if activeChannelId changes to ensure sim messages don't go to active one immediately
-
+  }, [isConnected, sendMessageToServer, activeChannelId, markChannelAsRead, handleWsError]);
+  
   const currentUser = ALL_MOCK_USERS.find(u => u.id === CURRENT_USER_ID);
   if (!currentUser) {
-    // This should ideally not happen if CURRENT_USER_ID is in ALL_MOCK_USERS
     console.error("Current user not found!");
     return <React.Fragment>Error: Current user configuration issue.</React.Fragment>;
   }
+  
+  useEffect(() => {
+    const totalUnread = channels.reduce((sum, ch) => sum + ch.unreadCount, 0);
+    const baseTitle = "Sales Dashboard";
+    let statusPart = wsStatusDisplay;
+    if(isConnected) statusPart = "Connected";
+    else if (lastError) statusPart = `Error: ${lastError.substring(0,50)}`; // Show hook's direct error if present
+    
+    if (totalUnread > 0) {
+      document.title = `(${totalUnread}) ${baseTitle} - ${statusPart}`;
+    } else {
+      document.title = `${baseTitle} - ${statusPart}`;
+    }
+  }, [channels, wsStatusDisplay, isConnected, lastError]);
+
 
   return (
     <HashRouter>
       <div className="h-screen w-screen flex flex-col antialiased text-gray-800 overflow-hidden">
-        <Routes>
-          <Route path="/" element={
-            <DashboardPage 
-              channels={channels} // Pass all channels for individual card data
-            />
-          }/>
-          <Route path="/chat" element={ // General chat path, will redirect to a specific channel
-            <ChatPage
-              channels={channels}
-              messages={messages}
-              activeChannelId={activeChannelId}
-              onSelectChannel={handleSelectChannel}
-              onSendMessage={handleSendMessage}
-              currentUser={currentUser}
-              users={ALL_MOCK_USERS}
-            />
-          }/>
-           <Route path="/chat/:channelId" element={ // Specific channel path
-            <ChatPage
-              channels={channels}
-              messages={messages}
-              activeChannelId={activeChannelId} // Will be updated by ChatPage's useEffect based on URL
-              onSelectChannel={handleSelectChannel}
-              onSendMessage={handleSendMessage}
-              currentUser={currentUser}
-              users={ALL_MOCK_USERS}
-            />
-          }/>
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        <div className={`p-2 text-center text-xs text-white sticky top-0 z-50 ${
+            isConnected ? 'bg-green-600' : lastError ? 'bg-red-600' : 'bg-yellow-500 text-black'
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          WebSocket: {isConnected ? 'Connected' : (lastError || wsStatusDisplay)}
+          {!isConnected && (
+            <button 
+              onClick={() => {
+                setWsStatusDisplay('Attempting to connect...');
+                connect(WEBSOCKET_SERVER_URL);
+              }}
+              className="ml-2 px-2 py-0.5 border border-current rounded hover:bg-opacity-20 hover:bg-current text-xs"
+            >
+              Reconnect
+            </button>
+          )}
+        </div>
+
+        <div className="flex-grow overflow-hidden flex flex-col"> {/* Added to contain routes and allow scrolling if needed */}
+          <Routes>
+            <Route path="/" element={
+              <DashboardPage 
+                channels={channels}
+              />
+            }/>
+            <Route path="/chat" element={ 
+              <ChatPage
+                channels={channels}
+                messages={messages}
+                activeChannelId={activeChannelId}
+                onSelectChannel={handleSelectChannel}
+                onSendMessage={handleSendMessage}
+                currentUser={currentUser}
+                users={ALL_MOCK_USERS}
+                isConnected={isConnected}
+              />
+            }/>
+            <Route path="/chat/:channelId" element={ 
+              <ChatPage
+                channels={channels}
+                messages={messages}
+                activeChannelId={activeChannelId} 
+                onSelectChannel={handleSelectChannel}
+                onSendMessage={handleSendMessage}
+                currentUser={currentUser}
+                users={ALL_MOCK_USERS}
+                isConnected={isConnected}
+              />
+            }/>
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </div>
       </div>
     </HashRouter>
   );
