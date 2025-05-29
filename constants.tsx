@@ -23,27 +23,27 @@ export const INITIAL_CHANNELS: Channel[] = [
   {
     id: 'channel_leads',
     name: 'New Leads',
-    avatarUrl: 'https://picsum.photos/seed/leadsChannel/100/100', // Consider specific icons later
-    lastMessagePreview: 'Inquiry from Acme Corp about enterprise plan.',
-    lastMessageTimestamp: Date.now() - 1000 * 60 * 5, // 5 minutes ago
-    unreadCount: 2,
-    members: ALL_MOCK_USERS.filter(u => u.id !== 'user_sales_michael'), // Example: Michael (Sales Ops) might not be in all lead discussions
+    avatarUrl: 'https://picsum.photos/seed/leadsChannel/100/100',
+    lastMessagePreview: 'No messages yet',
+    lastMessageTimestamp: Date.now(), 
+    unreadCount: 0,
+    members: ALL_MOCK_USERS.filter(u => u.id !== 'user_sales_michael'), 
   },
   {
     id: 'channel_followups',
     name: 'Follow-Ups Due',
     avatarUrl: 'https://picsum.photos/seed/followupsChannel/100/100',
-    lastMessagePreview: 'Reminder: Follow up with Beta Inc scheduled for today 3 PM.',
-    lastMessageTimestamp: Date.now() - 1000 * 60 * 30, // 30 minutes ago
-    unreadCount: 1,
-    members: ALL_MOCK_USERS.filter(u => u.id !== 'user_system_bot'), // Example: Bot might not be in direct follow-up discussions
+    lastMessagePreview: 'No messages yet',
+    lastMessageTimestamp: Date.now(),
+    unreadCount: 0,
+    members: ALL_MOCK_USERS.filter(u => u.id !== 'user_system_bot'), 
   },
   {
     id: 'channel_proposals',
     name: 'Active Proposals',
     avatarUrl: 'https://picsum.photos/seed/proposalsChannel/100/100',
-    lastMessagePreview: 'Proposal for Gamma Ltd sent. Awaiting feedback.',
-    lastMessageTimestamp: Date.now() - 1000 * 60 * 120, // 2 hours ago
+    lastMessagePreview: 'No messages yet',
+    lastMessageTimestamp: Date.now(),
     unreadCount: 0,
     members: ALL_MOCK_USERS.filter(u => !['user_system_bot'].includes(u.id)),
   },
@@ -51,10 +51,10 @@ export const INITIAL_CHANNELS: Channel[] = [
     id: 'channel_alerts',
     name: 'Critical Alerts',
     avatarUrl: 'https://picsum.photos/seed/alertsChannel/100/100',
-    lastMessagePreview: 'System Alert: Integration with CRM failed. Needs attention.',
-    lastMessageTimestamp: Date.now() - 1000 * 60 * 2, // 2 minutes ago
-    unreadCount: 3,
-    members: ALL_MOCK_USERS, // All relevant members including system bot
+    lastMessagePreview: 'No messages yet',
+    lastMessageTimestamp: Date.now(),
+    unreadCount: 0,
+    members: ALL_MOCK_USERS, 
   },
 ];
 

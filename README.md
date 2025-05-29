@@ -1,15 +1,16 @@
+
 # React Sales Chat Dashboard
 
 This is a proof-of-concept React application designed for a sales platform. It features a dashboard highlighting key sales metrics that require attention and a multi-channel chat interface for team communication and notifications related to these metrics.
 
-Built with React, TypeScript, Tailwind CSS, and React Router. It uses ES modules and can be run directly in a modern browser.
+Built with React, TypeScript, Tailwind CSS, and React Router. It uses Vite for development and can be bundled for production.
 
 ## Features
 
 - **Dashboard Overview:** Displays 4 key sales KPIs (New Leads, Follow-Ups Due, Active Proposals, Critical Alerts) with unread notification counts.
 - **Direct Navigation:** Clicking a KPI card on the dashboard navigates to the relevant chat channel.
 - **Multi-Channel Chat:** Supports multiple chat channels, each corresponding to a sales KPI.
-- **Real-time Message Simulation:** Simulates new messages arriving from various sales team members into different channels. This simulation mimics the behavior of a WebSocket-based system.
+- **Real-time Message Simulation (Toggleable):** Simulates new messages arriving from various sales team members into different channels. This simulation mimics the behavior of a WebSocket-based system and can be turned on/off for development.
 - **User-Specific Views:** Messages are displayed differently for the current user versus other users.
 - **Responsive Design:** Adapts to different screen sizes.
 - **URL-based Channel Navigation:** Chat channels can be accessed directly via URL (e.g., `/chat/channel_leads`).
@@ -36,32 +37,43 @@ The `CURRENT_USER_ID` in the application is `user_current_app_user`.
 
 ## Running the Application
 
-1.  **No Build Step Required (for this PoC):** This application uses ES modules and imports dependencies via CDN or `esm.sh`.
-2.  **Serve `index.html`:**
-    *   The simplest way is to use a live server extension in your code editor (like "Live Server" in VS Code). Right-click `index.html` and choose "Open with Live Server".
-    *   Alternatively, you can use a simple HTTP server. If you have Python installed:
-        *   Navigate to the project directory in your terminal:
-            ```bash
-            cd /path/to/your/project
-            ```
-        *   Run the server (this will usually default to port 8000):
-            ```bash
-            # For Python 3
-            python -m http.server
-            ```
-        *   To specify a different port (e.g., 9000):
-            ```bash
-            # For Python 3
-            python -m http.server 9000
-            ```
-        *   Then open `http://localhost:8000` (or your chosen port) in your browser.
-3.  **API Key (Gemini API - Placeholder for future use):**
+This project uses Vite as its development server and build tool.
+
+1.  **Prerequisites:**
+    *   Node.js and npm (or yarn) installed. You can download them from [nodejs.org](https://nodejs.org/).
+
+2.  **Setup:**
+    *   Clone this repository or download and extract the source files into a project directory.
+    *   Navigate to the project directory in your terminal:
+        ```bash
+        cd /path/to/your/mas-chat-dashboard
+        ```
+    *   Install the necessary dependencies:
+        ```bash
+        npm install
+        ```
+        (or `yarn install` if you prefer yarn)
+
+3.  **Run the Development Server:**
+    *   Start the Vite development server:
+        ```bash
+        npm run dev
+        ```
+        (or `yarn dev`)
+    *   Vite will compile the application and provide you with a local URL (usually `http://localhost:5173`). Open this URL in your web browser.
+
+4.  **Alternative (Simple Static Server - Not Recommended for this Project):**
+    *   While you *can* serve the `dist` folder (after running `npm run build`) with a simple HTTP server like Python's, this is **not recommended for development** as it lacks hot reloading and doesn't serve the source files correctly.
+    *   The `python -m http.server` method is **not suitable for running this project in development mode** because it does not transpile TypeScript/JSX or handle module resolution as Vite does.
+
+5.  **API Key (Gemini API - Placeholder for future use):**
     *   This application currently does *not* use the Gemini API. However, if you were to integrate it, the API key should be managed as an environment variable `process.env.API_KEY`.
-    *   For local development without a build process that handles environment variables, you might temporarily hardcode it for testing OR use a local `.env` file if you introduce a build tool like Vite or Create React App. **Never commit API keys to version control.**
+    *   For local development with Vite, you can create a `.env` file in the project root and add `VITE_API_KEY=your_actual_key_here`. You would then access it in your code as `import.meta.env.VITE_API_KEY`. **Never commit API keys or `.env` files containing sensitive keys to version control.** Add `.env` to your `.gitignore` file.
 
 ## How Simulated Messages Work
 
--   **Automatic Simulation:** The `App.tsx` component includes a `useEffect` hook with a `setInterval` function. Every 15-20 seconds, this function:
+-   **Toggleable Simulation:** The automatic message simulation can be enabled or disabled by changing the `ENABLE_MESSAGE_SIMULATION` constant at the top of `App.tsx`. By default, it is set to `false` (off).
+-   **Automatic Simulation (if enabled):** If `ENABLE_MESSAGE_SIMULATION` is `true`, the `App.tsx` component includes a `useEffect` hook with a `setInterval` function. Every 15-20 seconds, this function:
     1.  Randomly selects one of the "Sales Team" users (excluding the `CURRENT_USER_ID`).
     2.  Randomly selects one of the 4 KPI-specific chat channels.
     3.  Generates a contextually relevant sample message.

@@ -6,56 +6,15 @@ import { INITIAL_CHANNELS, ALL_MOCK_USERS, CURRENT_USER_ID, MOCK_SALES_TEAM_USER
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
 
+// --- TOGGLE FOR MESSAGE SIMULATION ---
+const ENABLE_MESSAGE_SIMULATION = false; // Set to true to enable automatic test message sending
+
 const App: React.FC = () => {
   const [channels, setChannels] = useState<Channel[]>(INITIAL_CHANNELS);
   const [messages, setMessages] = useState<Record<string, Message[]>>(() => {
     const initialMessages: Record<string, Message[]> = {};
     INITIAL_CHANNELS.forEach(channel => {
-      const otherMembers = channel.members.filter(m => m.id !== CURRENT_USER_ID);
-      const initialSender = otherMembers.length > 0 ? otherMembers[0] : MOCK_SALES_TEAM_USERS[1]; // Fallback to Sarah
-
-      initialMessages[channel.id] = [
-        {
-          id: `msg-${channel.id}-init1`,
-          channelId: channel.id,
-          senderId: initialSender.id,
-          text: channel.lastMessagePreview || `Welcome to the ${channel.name} channel!`,
-          timestamp: channel.lastMessageTimestamp || Date.now() - 1000 * 60 * 10,
-          isRead: channel.unreadCount === 0,
-        },
-      ];
-
-      // Add more specific initial messages based on channel type
-      if (channel.id === 'channel_leads' && channel.unreadCount > 1) {
-         initialMessages[channel.id].unshift({
-            id: `msg-${channel.id}-init0`,
-            channelId: channel.id,
-            senderId: MOCK_SALES_TEAM_USERS.find(u => u.name.includes("Sarah"))?.id || MOCK_SALES_TEAM_USERS[1].id,
-            text: "We have a high-potential lead from Innovatech, assigning to John.",
-            timestamp: (channel.lastMessageTimestamp || Date.now()) - 1000 * 60 * 15,
-            isRead: false,
-         });
-      }
-       if (channel.id === 'channel_alerts' && channel.unreadCount > 1) {
-         initialMessages[channel.id].unshift({
-            id: `msg-${channel.id}-alertsys`,
-            channelId: channel.id,
-            senderId: MOCK_SALES_TEAM_USERS.find(u => u.name.includes("SalesBot"))?.id || MOCK_SALES_TEAM_USERS[5].id,
-            text: "Deal XYZ status changed to 'At Risk'. Please review.",
-            timestamp: (channel.lastMessageTimestamp || Date.now()) - 1000 * 60 * 3,
-            isRead: false,
-         });
-          if(channel.unreadCount > 2) {
-            initialMessages[channel.id].unshift({
-              id: `msg-${channel.id}-alertjohn`,
-              channelId: channel.id,
-              senderId: MOCK_SALES_TEAM_USERS.find(u => u.name.includes("John"))?.id || MOCK_SALES_TEAM_USERS[2].id,
-              text: "Investigating the CRM sync issue now.",
-              timestamp: (channel.lastMessageTimestamp || Date.now()) - 1000 * 60 * 5,
-              isRead: false,
-            });
-          }
-      }
+      initialMessages[channel.id] = []; // Start with an empty array of messages
     });
     return initialMessages;
   });
@@ -106,12 +65,21 @@ const App: React.FC = () => {
       [channelId]: [...(prev[channelId] || []), newMessage],
     }));
     setChannels(prev => prev.map(ch => 
-      ch.id === channelId ? { ...ch, lastMessagePreview: `You: ${text}`, lastMessageTimestamp: newMessage.timestamp } : ch
+      ch.id === channelId ? { ...ch, lastMessagePreview: `You: ${text}`, lastMessageTimestamp: newMessage.timestamp, unreadCount: 0 } : ch
     ));
-  }, []);
+    // If the current user sends a message to the active channel, ensure its unread count remains 0 or is set to 0.
+    if (channelId === activeChannelId) {
+      markChannelAsRead(channelId);
+    }
+
+  }, [activeChannelId, markChannelAsRead]);
 
   // Simulate new messages from sales team members
   useEffect(() => {
+    if (!ENABLE_MESSAGE_SIMULATION) {
+      return; // Exit if simulation is disabled
+    }
+
     const intervalId = setInterval(() => {
       setChannels(prevChannels => {
         const channelsCopy = [...prevChannels];
@@ -200,7 +168,7 @@ const App: React.FC = () => {
   if (!currentUser) {
     // This should ideally not happen if CURRENT_USER_ID is in ALL_MOCK_USERS
     console.error("Current user not found!");
-    return <>Error: Current user configuration issue.</>;
+    return <React.Fragment>Error: Current user configuration issue.</React.Fragment>;
   }
 
   return (
