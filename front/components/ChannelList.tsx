@@ -112,22 +112,7 @@ const ChannelList: React.FC<ChannelListProps> = ({ channels, activeChannelId, on
   
   return (
     <ul className="flex-1 overflow-y-auto custom-scrollbar-dark bg-slate-800 h-full" aria-label="Chat channels">
-      {/* Custom scrollbar style (add this to your global CSS if needed) */}
-      <style jsx global>{`
-        .custom-scrollbar-dark::-webkit-scrollbar {
-          width: 8px;
-        }
-        .custom-scrollbar-dark::-webkit-scrollbar-track {
-          background: #1e293b; /* slate-800 */
-        }
-        .custom-scrollbar-dark::-webkit-scrollbar-thumb {
-          background: #475569; /* slate-600 */
-          border-radius: 4px;
-        }
-        .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
-          background: #64748b; /* slate-500 */
-        }
-      `}</style>
+      {/* Custom scrollbar style: move this CSS to your global stylesheet (e.g., styles/globals.css) */}
       {sortedChannels.map(channel => (
         <ChannelListItem
           key={channel.id}
