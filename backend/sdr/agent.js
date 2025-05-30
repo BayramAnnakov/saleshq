@@ -198,6 +198,7 @@ Requirements:
 3. Keep the message concise (max 3-4 paragraphs)
 4. Maintain a professional but conversational tone
 5. Ensure the call to action remains clear
+6. Always sign the message with "Bayram" as the sender name
 
 Rewrite the message:`;
 
@@ -210,10 +211,14 @@ Rewrite the message:`;
       console.log("[SDR Agent] Stored rewritten message:", lastGeneratedMessage);
       
       // Send the rewritten message back through WebSocket
-      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, rewrittenMessage);
+      await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, rewrittenMessage);
+      
+      // Return early to prevent further processing
+      return;
     } else {
       console.log("[SDR Agent] Unknown intent:", intentResult.intent);
       wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "I'm not sure what you want me to do. You can ask me to generate a new message or rewrite the existing one.");
+      return;
     }
   } catch (error) {
     console.error("[SDR Agent] Error handling WebSocket message:", error);
