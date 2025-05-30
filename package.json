@@ -1,0 +1,22 @@
+{
+  "name": "saleshq",
+  "version": "1.0.0",
+  "description": "SalesHQ - AI-powered sales research platform",
+  "main": "index.js",
+  "scripts": {
+    "test": "ts-node backend/researcher/test-client.ts",
+    "build": "tsc",
+    "start": "node dist/backend/researcher/test-client.js"
+  },
+  "dependencies": {
+    "@apify/actor": "^2.0.0",
+    "@apify/client": "^2.0.0",
+    "@inngest/agent-kit": "latest",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.0"
+  }
+} 
