@@ -1,0 +1,37 @@
+{
+  "name": "websocket-chat-client",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.3.1",
+    "tailwindcss": "^3.4.4",
+    "typescript": "^5.4.5",
+    "vite": "^5.3.1"
+  },
+  "description": "This React application serves as a client for a WebSocket-based chat server. It allows users to connect to a specified server, set their user ID, choose a chat channel, send messages, and receive real-time messages from other users or system events on subscribed channels.",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/merdandt/SalesHQ-client.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/merdandt/SalesHQ-client/issues"
+  },
+  "homepage": "https://github.com/merdandt/SalesHQ-client#readme"
+}

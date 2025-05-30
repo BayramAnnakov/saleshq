@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebSocket Chat Client</title>
+    <!-- Tailwind CSS will be processed by Vite during development and build -->
+    <!-- For development with Vite, Tailwind is typically set up via postcss.config.js and imported in a JS/TS file or a global CSS file. -->
+    <!-- The CDN link is kept for the simple HTTP server scenario. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.0.0-rc.0",
+    "react-dom/client": "https://esm.sh/react-dom@^19.0.0-rc.0/client",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "vite": "https://esm.sh/vite@^6.3.5",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.5.0"
+  }
+}
+</script>
+    <!-- For Vite, main.css would typically be generated and linked here after a build.
+         During dev, Vite injects styles.
+    <link rel="stylesheet" href="/src/main.css"> -->
+  </head>
+  <body class="bg-slate-900 text-slate-100">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
+<link rel="stylesheet" href="index.css">
+<script src="index.tsx" type="module"></script>

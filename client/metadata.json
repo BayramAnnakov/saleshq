@@ -1,0 +1,5 @@
+{
+  "name": "WebSocket Chat Client",
+  "description": "A React client application to connect to a WebSocket chat server, send messages to specific channels, and receive real-time messages. Designed to interact with a server compatible with the Main Chat app's channel and user structure.",
+  "requestFramePermissions": []
+}
