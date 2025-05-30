@@ -27,7 +27,7 @@ All of it runs end-to-end in **TypeScript**.
 | AI Agents | **AgentKit** workers (Prospector, Researcher, SDR, Scheduler) |
 | Inter-Agent |**Google A-2-A protocol** tasks / results |
 | Frontend | **Vite** (dark, neon-teal theme) |
-| External APIs | Apify Website Crawler |
+| External APIs | Apify Website Crawler via MCP |
 
 ## What We Learned 📚
 * **Agent orchestration is UX, not just code.** Users love “silent” coordination far more than raw chat dumps.  
