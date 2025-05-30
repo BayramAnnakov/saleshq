@@ -1,0 +1,17 @@
+{
+  "name": "researcher",
+  "version": "1.0.0",
+  "description": "a simple echo agent that returns your original message.",
+  "type": "module",
+  "scripts": {
+    "start": "node launch.js",
+    "test": "node test-deploy.js",
+    "deploy": "node deploy.js"
+  },
+  "dependencies": {
+    "@artinet/sdk": "latest",
+    "@inngest/agent-kit": "^0.8.0",
+    "dotenv": "^16.4.5",
+    "apify-client": "^2.8.5"
+  }
+}
