@@ -14,7 +14,7 @@ We thought: **what if a sales org had an air-traffic-control tower** that showed
 ## What We Built 🛠️
 **SalesHQ** is that tower:
 
-* **Unified Dashboard** — Kanban cards for every deal with live agent avatars.  
+* **Unified Dashboard** — Sales metrics & important account chats in a single view.  
 * **Account Rooms** — Slack-style threads where bots drop drafts, humans approve inline.  
 * **Silent Inter-Agent Comms** — Bots whisper via the Google A-2-A protocol; no human spam.  
 * **Extras** — ResearcherBot pulls fresh facts with Apify
