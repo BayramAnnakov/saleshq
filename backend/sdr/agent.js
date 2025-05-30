@@ -23,6 +23,8 @@ const wsClient = new WebSocketClient('ws://localhost:8080');
 
 // Track the last message we sent to prevent processing our own messages
 let lastSentMessage = null;
+let lastSentTimestamp = 0;
+const MESSAGE_DEDUPLICATION_WINDOW = 5000; // 5 seconds
 
 // Connect to WebSocket server immediately
 console.log("[SDR Agent] Attempting to connect to WebSocket server...");
@@ -57,6 +59,19 @@ Your messages should be professional, concise, and focused on starting a convers
   // }),
 });
 
+// Modify the sendMessage function to track sent messages with timestamps
+const originalSendMessage = wsClient.sendMessage;
+wsClient.sendMessage = function(userId, channelId, message) {
+  const now = Date.now();
+  // Only update if it's a new message or outside the deduplication window
+  if (message !== lastSentMessage || (now - lastSentTimestamp) > MESSAGE_DEDUPLICATION_WINDOW) {
+    lastSentMessage = message;
+    lastSentTimestamp = now;
+    return originalSendMessage.call(this, userId, channelId, message);
+  }
+  return Promise.resolve(); // Skip duplicate message
+};
+
 // Set up message handler
 wsClient.onMessage = async (message) => {
   console.log("[SDR Agent] Received message:", message);
@@ -72,9 +87,10 @@ wsClient.onMessage = async (message) => {
       return;
     }
 
-    // Ignore our own messages
-    if (message.senderId === WS_USER_ID) {
-      console.log("[SDR Agent] Ignoring own message");
+    // Ignore our own messages and recent duplicates
+    if (message.senderId === WS_USER_ID || 
+        (message.text === lastSentMessage && (Date.now() - lastSentTimestamp) < MESSAGE_DEDUPLICATION_WINDOW)) {
+      console.log("[SDR Agent] Ignoring own message or recent duplicate");
       return;
     }
 
@@ -205,13 +221,6 @@ Rewrite the message:`;
   }
 };
 
-// Modify the sendMessage function to track sent messages
-const originalSendMessage = wsClient.sendMessage;
-wsClient.sendMessage = function(userId, channelId, message) {
-  lastSentMessage = message;
-  return originalSendMessage.call(this, userId, channelId, message);
-};
-
 // Export the handler function that A2A server expects
 export async function* handler({ userMessage, isCancelled }) {
   console.log("\n[SDR Agent] Starting to process new request...");
@@ -231,20 +240,17 @@ export async function* handler({ userMessage, isCancelled }) {
     },
   };
 
-  // Send status update to WebSocket
-  wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Generating personalized message...");
-
   const prospectEmail = userMessage.parts
     .filter((part) => part.type === "text")
     .map((part) => part.text)
     .join(" ");
 
   console.log(`[SDR Agent] Received prospect email: ${prospectEmail}`);
-  wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Processing request for prospect: ${prospectEmail}`);
+  await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Processing request for prospect: ${prospectEmail}`);
 
   if (!prospectEmail) {
     console.log("[SDR Agent] Error: No prospect email provided");
-    wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: No prospect email provided");
+    await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: No prospect email provided");
     yield {
       state: "failed",
       message: {
@@ -258,7 +264,7 @@ export async function* handler({ userMessage, isCancelled }) {
   try {
     // Get prospect information from researcher agent
     console.log("[SDR Agent] Creating client to communicate with Researcher agent...");
-    wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Fetching prospect information from Researcher agent...");
+    await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Fetching prospect information from Researcher agent...");
     const researcherClient = new A2AClient("http://localhost:3000/api");
 
     console.log("[SDR Agent] Sending request to Researcher agent...");
@@ -274,7 +280,7 @@ export async function* handler({ userMessage, isCancelled }) {
 
     if (!researcherTask || researcherTask.status.state === "failed") {
       console.log("[SDR Agent] Error: Failed to get prospect info from Researcher agent");
-      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: Failed to get prospect information");
+      await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: Failed to get prospect information");
       yield {
         state: "failed",
         message: {
@@ -296,7 +302,7 @@ export async function* handler({ userMessage, isCancelled }) {
     if (!researcherData || !researcherData.prospect) {
       console.log("[SDR Agent] Error: Failed to parse prospect information");
       console.log("[SDR Agent] Received data:", JSON.stringify(researcherData, null, 2));
-      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: Failed to parse prospect information");
+      await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: Failed to parse prospect information");
       yield {
         state: "failed",
         message: {
@@ -309,12 +315,12 @@ export async function* handler({ userMessage, isCancelled }) {
 
     const prospectInfo = researcherData.prospect;
     console.log("[SDR Agent] Successfully received prospect info:", JSON.stringify(prospectInfo, null, 2));
-    wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Successfully retrieved prospect information. Generating personalized message...");
+    await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Successfully retrieved prospect information. Generating personalized message...");
 
     // Check for task cancellation
     if (isCancelled()) {
       console.log("[SDR Agent] Task was cancelled");
-      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Processing has been cancelled.");
+      await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Processing has been cancelled.");
       yield {
         state: "canceled",
         message: {
@@ -371,6 +377,7 @@ Requirements:
 5. End with a specific call to action
 6. Keep the message concise (max 3-4 paragraphs)
 7. Maintain a professional but conversational tone
+8. Always sign the message with "Bayram" as the sender name
 
 Generate the message:`;
 
@@ -381,7 +388,7 @@ Generate the message:`;
     lastGeneratedMessage = personalizedMessage;
     
     console.log("[SDR Agent] Message generation completed");
-    wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, personalizedMessage);
+    await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, personalizedMessage);
 
     // Yield a completed status with the personalized message
     yield {
@@ -393,7 +400,7 @@ Generate the message:`;
     };
   } catch (error) {
     console.error("[SDR Agent] Error generating message:", error);
-    wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Error generating message: ${error}`);
+    await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Error generating message: ${error}`);
     yield {
       state: "failed",
       message: {
