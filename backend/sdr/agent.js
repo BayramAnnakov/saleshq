@@ -21,6 +21,9 @@ const WS_CHANNEL_ID = "channel_amazon";
 // Initialize WebSocket client
 const wsClient = new WebSocketClient('ws://localhost:8080');
 
+// Track the last message we sent to prevent processing our own messages
+let lastSentMessage = null;
+
 // Connect to WebSocket server immediately
 console.log("[SDR Agent] Attempting to connect to WebSocket server...");
 wsClient.connect().then(() => {
@@ -58,19 +61,25 @@ Your messages should be professional, concise, and focused on starting a convers
 wsClient.onMessage = async (message) => {
   console.log("[SDR Agent] Received message:", message);
   try {
-    if (typeof message !== 'string') {
-      console.log("[SDR Agent] Ignoring non-string message:", message);
+    if (typeof message !== 'object' || !message.senderId || !message.text) {
+      console.log("[SDR Agent] Ignoring invalid message format:", message);
       return;
     }
 
     // Ignore messages from other system bots
-    if (message.startsWith("system_bot_")) {
-      console.log("[SDR Agent] Ignoring message from system bot:", message);
+    if (message.senderId.startsWith("system_bot_")) {
+      console.log("[SDR Agent] Ignoring message from system bot:", message.senderId);
       return;
     }
 
-    const trimmedMessage = message.trim();
-    console.log("[SDR Agent] Processing message:", trimmedMessage);
+    // Ignore our own messages
+    if (message.senderId === WS_USER_ID) {
+      console.log("[SDR Agent] Ignoring own message");
+      return;
+    }
+
+    const trimmedMessage = message.text.trim();
+    console.log("[SDR Agent] Processing message from", message.senderId + ":", trimmedMessage);
 
     // Use Claude to understand the user's intent
     const intentPrompt = `Analyze the following message and determine if the user wants to:
@@ -86,8 +95,7 @@ The response must be valid JSON that can be parsed directly.
 Required format:
 {
   "intent": "start" | "rewrite" | "other",
-  "context": "extracted context or email if present",
-  "confidence": 0-1
+  "context": "extracted context or email if present"
 }`;
 
     const { output } = await sdrAgent.run(intentPrompt);
@@ -195,6 +203,13 @@ Rewrite the message:`;
     console.error("[SDR Agent] Error handling WebSocket message:", error);
     wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Error handling message: ${error.message}`);
   }
+};
+
+// Modify the sendMessage function to track sent messages
+const originalSendMessage = wsClient.sendMessage;
+wsClient.sendMessage = function(userId, channelId, message) {
+  lastSentMessage = message;
+  return originalSendMessage.call(this, userId, channelId, message);
 };
 
 // Export the handler function that A2A server expects

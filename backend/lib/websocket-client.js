@@ -41,11 +41,11 @@ class WebSocketClient {
               console.log('[WebSocket] Parsed message:', message);
               
               // Handle newMessage type from the server
-              if (message.type === 'newMessage' && message.payload && message.payload.text) {
+              if (message.type === 'newMessage' && message.payload) {
                 console.log('[WebSocket] Processing newMessage:', message.payload);
-                this.onMessage(message.payload.text);
+                this.onMessage(message.payload);
               } else {
-                console.log('[WebSocket] Unhandled message type or missing text:', message);
+                console.log('[WebSocket] Unhandled message type or missing payload:', message);
               }
             } catch (error) {
               console.error('[WebSocket] Error parsing message:', error);

@@ -13,6 +13,39 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
+// Configuration
+const USE_MOCK_WEBSITE_DATA = true; // Set to false to use real Apify website crawling
+
+// Mock website data for testing
+const mockWebsiteData = {
+  companyInfo: {
+    description: "A leading technology company specializing in AI and machine learning solutions",
+    technologies: ["Python", "TensorFlow", "AWS", "Docker"],
+    socialLinks: {
+      linkedin: "https://linkedin.com/company/example",
+      twitter: "https://twitter.com/example"
+    },
+    recentUpdates: [
+      "Launched new AI product line",
+      "Expanded to European market",
+      "Partnered with major cloud provider"
+    ]
+  },
+  insights: {
+    companySize: "100-500 employees",
+    funding: "Series B",
+    keyProducts: [
+      "AI-powered analytics platform",
+      "Machine learning automation suite",
+      "Cloud-native solutions"
+    ],
+    teamInfo: {
+      leadership: ["John Doe - CEO", "Jane Smith - CTO"],
+      departments: ["Engineering", "Product", "Sales", "Marketing"]
+    }
+  }
+};
+
 // if (!process.env.ANTHROPIC_API_KEY) {
 //   throw new Error('ANTHROPIC_API_KEY environment variable is required');
 // }
@@ -27,6 +60,9 @@ const WS_CHANNEL_ID = "channel_amazon";
 
 // Initialize WebSocket client
 const wsClient = new WebSocketClient('ws://localhost:8080');
+
+// Track the last message we sent to prevent processing our own messages
+let lastSentMessage = null;
 
 console.log('[Researcher Agent] Initializing...');
 
@@ -51,6 +87,13 @@ const prospectDatabase = new Map([
 ]);
 
 console.log('[Researcher Agent] Prospect database initialized with', prospectDatabase.size, 'entries');
+
+// Modify the sendMessage function to track sent messages
+const originalSendMessage = wsClient.sendMessage;
+wsClient.sendMessage = function(userId, channelId, message) {
+  lastSentMessage = message;
+  return originalSendMessage.call(this, userId, channelId, message);
+};
 
 // Create the agent configuration
 const researcherAgent = createAgent({
@@ -100,12 +143,18 @@ export async function* handler(context) {
     .join(" ");
 
   // Ignore messages from other system bots
-  if (prospectEmail.startsWith("system_bot_")) {
-    console.log("[Researcher Agent] Ignoring message from system bot:", prospectEmail);
+  if (context.userMessage.senderId && context.userMessage.senderId.startsWith("system_bot_")) {
+    console.log("[Researcher Agent] Ignoring message from system bot:", context.userMessage.senderId);
     return;
   }
 
-  console.log(`[Researcher Agent] Received prospect email: ${prospectEmail}`);
+  // Ignore our own messages
+  if (context.userMessage.senderId === WS_USER_ID) {
+    console.log("[Researcher Agent] Ignoring own message");
+    return;
+  }
+
+  console.log(`[Researcher Agent] Received prospect email from ${context.userMessage.senderId || 'unknown'}: ${prospectEmail}`);
   wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Processing request for prospect: ${prospectEmail}`);
 
   yield {
@@ -175,9 +224,15 @@ export async function* handler(context) {
         },
       };
       
-      websiteData = await crawlWebsite(prospectInfo.website);
-      console.log("[Researcher Agent] Website crawl completed successfully");
-      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Website crawl completed successfully");
+      if (USE_MOCK_WEBSITE_DATA) {
+        console.log("[Researcher Agent] Using mock website data");
+        websiteData = mockWebsiteData;
+      } else {
+        websiteData = await crawlWebsite(prospectInfo.website);
+      }
+      
+      console.log("[Researcher Agent] Website data retrieval completed successfully");
+      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Website data retrieval completed successfully");
       
       // Process and structure the website data
       console.log("[Researcher Agent] Processing website data...");
