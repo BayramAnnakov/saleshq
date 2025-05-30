@@ -38,7 +38,7 @@ const ChatInputBar: React.FC<ChatInputBarProps> = ({ onSendMessage, channelName 
           type="button"
           aria-label="Add emoji"
           className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-slate-400 hover:text-sky-400 transition-colors"
-          onClick={() => { /* Emoji picker placeholder */ }}
+            onClick={() => {/* TODO: Emoji picker functionality if desired */}}
         >
           <SmileIcon className="w-5 h-5" />
         </button>

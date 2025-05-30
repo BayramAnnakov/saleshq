@@ -1,6 +1,6 @@
 import React from 'react';
-import { Message, User } from '../types';
-import { CURRENT_USER_ID } from '../constants';
+import { Message, User } from '../types'; 
+import { CURRENT_USER_ID } from '../constants'; // Ensure this is the correct path
 
 const formatRelativeTime = (timestamp: number): string => {
   const now = Date.now();
@@ -27,25 +27,27 @@ interface ChatMessageItemProps {
 
 const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, sender, currentUser }) => {
   const isCurrentUserMessage = message.senderId === currentUser.id;
-  const defaultAvatarSeed = sender?.id || message.senderId || 'default';
+  
   const avatarUrl = sender?.avatarUrl ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent((sender?.name || 'U').substring(0,2))}&background=random&color=fff&size=40`;
   const senderName = sender?.name || 'Unknown User';
 
-  const messageLines = message.text.split('\n');
+  const messageLines = message.text.split('\\n'); // Handle escaped newlines if coming from string literal
   const firstLine = messageLines[0];
-  const restOfMessage = messageLines.slice(1).join('\n');
-  const isSDRBotSpecialMessage = sender?.name === 'SDRBot' &&
-                                 firstLine.toLowerCase().includes('draft an email') &&
+  const restOfMessage = messageLines.slice(1).join('\n'); // Join back with actual newlines for display
+  
+  // Specific styling for SDRBot's "draft an email" message from the design
+  const isSDRBotSpecialMessage = sender?.name === 'SDRBot' && 
+                                 firstLine.toLowerCase().includes('draft an email') && 
                                  messageLines.length > 1;
-  const isMerdanMessageWithReactions = sender?.name === 'Merdan' &&
-                                       messageLines.length > 1 &&
-                                       /^[😡🤯✔️🗡️✔️]+$/.test(messageLines[messageLines.length - 1].trim());
-  const mainMessageText = isMerdanMessageWithReactions
-    ? messageLines.slice(0, -1).join('\n')
-    : (isSDRBotSpecialMessage ? '' : firstLine);
+  // Specific styling for Merdan's message with mock reactions from the design
+  const isMerdanMessageWithReactions = sender?.name === 'Merdan' && 
+                                       messageLines.length > 1 && 
+                                       /^[😡🤯✔️🗡️👍👎\s]+$/.test(messageLines[messageLines.length - 1].trim()); // Allow spaces between emojis
+  
+  const mainMessageText = isMerdanMessageWithReactions ? messageLines.slice(0, -1).join('\n') : (isSDRBotSpecialMessage ? '' : firstLine);
   const quotedSDRMessage = isSDRBotSpecialMessage ? restOfMessage : '';
-  const reactionsText = isMerdanMessageWithReactions ? messageLines[messageLines.length - 1].trim() : null;
+  const reactionsText = isMerdanMessageWithReactions ? messageLines[messageLines.length -1].trim() : null;
 
   if (isCurrentUserMessage) {
     return (
@@ -88,29 +90,19 @@ const ChatMessageItem: React.FC<ChatMessageItemProps> = ({ message, sender, curr
             {formatRelativeTime(message.timestamp)}
           </span>
         </div>
-        <div className={`bg-slate-750 p-2.5 sm:p-3 rounded-xl rounded-tl-lg shadow text-sm text-slate-200 break-words ${
-            isSDRBotSpecialMessage ? 'border-l-2 border-slate-500 pl-3' : ''
-          }`}>
-          {isSDRBotSpecialMessage ? (
-            <p className="italic text-slate-300 whitespace-pre-wrap">
-              {quotedSDRMessage}
-            </p>
-          ) : isMerdanMessageWithReactions ? (
-            <>
-              <p className="whitespace-pre-wrap">{mainMessageText}</p>
-              {reactionsText && (
-                <p className="mt-1.5 text-base" aria-label="Reactions">
-                  {reactionsText.split('').map((r, i) => (
-                    <span key={i} className="mx-0.5">
-                      {r}
-                    </span>
-                  ))}
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="whitespace-pre-wrap">{message.text}</p>
-          )}
+        <div className={`bg-slate-750 p-2.5 sm:p-3 rounded-xl rounded-tl-lg shadow text-sm text-slate-200 break-words ${isSDRBotSpecialMessage ? 'border-l-2 border-slate-500 pl-3' : ''}`}>
+           {isSDRBotSpecialMessage ? (
+             <p className="italic text-slate-300 whitespace-pre-wrap">{quotedSDRMessage}</p>
+           ) : isMerdanMessageWithReactions ? (
+             <>
+                <p className="whitespace-pre-wrap">{mainMessageText}</p>
+                {reactionsText && <p className="mt-1.5 text-base" aria-label="Reactions">{
+                    reactionsText.split('').map((r, i) => <span key={i} className="mx-0.5">{r}</span>)
+                }</p>}
+             </>
+           ) : (
+             <p className="whitespace-pre-wrap">{message.text}</p>
+           )}
         </div>
       </div>
     </div>

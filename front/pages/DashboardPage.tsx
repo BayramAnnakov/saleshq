@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Channel } from '../types';
-import { LeadsIcon, FollowUpIcon, ProposalIcon, AlertIcon, CogIcon } from '../constants'; // Using more specific icons
+import { LeadsIcon, FollowUpIcon, ProposalIcon, AlertIcon, CogIcon } from '../constants'; // Using available icons
 
 interface DashboardPageProps {
   channels: Channel[];
@@ -32,10 +31,10 @@ const DashboardCard: React.FC<DashboardCardProps> = ({ title, value, icon, linkT
         {attention ? (Number(value) === 1 ? 'New Item' : 'New Items') : 'Up to date'}
       </p>
     </div>
-    <Link 
-      to={linkTo} 
+    <Link
+      to={linkTo}
       className={`mt-6 block w-full text-center px-4 py-3 rounded-lg font-semibold transition-colors
-                  ${attention ? 'bg-red-500 hover:bg-red-600 text-white shadow-md hover:shadow-lg' 
+                  ${attention ? 'bg-red-500 hover:bg-red-600 text-white shadow-md hover:shadow-lg'
                               : 'bg-sky-500 hover:bg-sky-600 text-white shadow-md hover:shadow-lg'}`}
     >
       {cta}
@@ -44,13 +43,28 @@ const DashboardCard: React.FC<DashboardCardProps> = ({ title, value, icon, linkT
 );
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ channels }) => {
-  const getChannelById = (id: string) => channels.find(c => c.id === id);
+  const targetChannelIds = [
+    'channel_samang', 
+    'channel_al_hay', 
+    'channel_human_apport', 
+    'channel_ren', 
+    'channel_hunter', 
+    'channel_nice_vo'
+  ];
 
-  const newLeadsChannel = getChannelById('channel_prospector');
-  const followUpsChannel = getChannelById('channel_researcher');
-  const proposalsChannel = getChannelById('channel_bayram');
-  const alertsChannel = getChannelById('channel_merdan');
-  const sdrChannel = getChannelById('channel_sdrbot');
+  const displayChannels = channels.filter(ch => targetChannelIds.includes(ch.id));
+
+  const getIconForChannel = (channelId: string): React.ReactNode => {
+    switch (channelId) {
+      case 'channel_samang':        return <CogIcon className="w-8 h-8" />;        // General AI / System
+      case 'channel_al_hay':      return <LeadsIcon className="w-8 h-8" />;        // Prospector
+      case 'channel_human_apport':  return <FollowUpIcon className="w-8 h-8" />;   // SDR / Follow-up
+      case 'channel_ren':           return <LeadsIcon className="w-8 h-8" />;        // Hunter
+      case 'channel_hunter':        return <LeadsIcon className="w-8 h-8" />;        // Hunter Bot
+      case 'channel_nice_vo':       return <ProposalIcon className="w-8 h-8" />;   // Qualifier / Proposals
+      default:                      return <AlertIcon className="w-8 h-8" />;        // Default fallback
+    }
+  };
 
   return (
     <div className="flex-grow flex flex-col items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-slate-900 to-slate-800 text-white min-h-screen">
@@ -59,71 +73,36 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ channels }) => {
         <p className="text-lg sm:text-xl text-slate-300">Your command center for sales activities.</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl mb-10">
-        {newLeadsChannel && (
-          <DashboardCard 
-            channelId={newLeadsChannel.id}
-            title="ProspectorBot"
-            value={newLeadsChannel.unreadCount}
-            icon={<LeadsIcon className="w-8 h-8" />}
-            linkTo={`/chat/${newLeadsChannel.id}`}
-            cta="View Leads"
-            attention={newLeadsChannel.unreadCount > 0}
-          />
-        )}
-        {followUpsChannel && (
-          <DashboardCard 
-            channelId={followUpsChannel.id}
-            title="ResearcherBot"
-            value={followUpsChannel.unreadCount}
-            icon={<FollowUpIcon className="w-8 h-8" />}
-            linkTo={`/chat/${followUpsChannel.id}`}
-            cta="Manage Follow-Ups"
-            attention={followUpsChannel.unreadCount > 0}
-          />
-        )}
-        {proposalsChannel && (
-          <DashboardCard 
-            channelId={proposalsChannel.id}
-            title="Bayram"
-            value={proposalsChannel.unreadCount}
-            icon={<ProposalIcon className="w-8 h-8" />}
-            linkTo={`/chat/${proposalsChannel.id}`}
-            cta="Track Proposals"
-            attention={proposalsChannel.unreadCount > 0}
-          />
-        )}
-        {alertsChannel && (
-          <DashboardCard 
-            channelId={alertsChannel.id}
-            title="Merdan"
-            value={alertsChannel.unreadCount}
-            icon={<AlertIcon className="w-8 h-8" />}
-            linkTo={`/chat/${alertsChannel.id}`}
-            cta="Address Alerts"
-            attention={alertsChannel.unreadCount > 0}
-          />
-        )}
-        {sdrChannel && (
-          <DashboardCard 
-            channelId={sdrChannel.id}
-            title="SDRBot"
-            value={sdrChannel.unreadCount}
-            icon={<FollowUpIcon className="w-8 h-8" />}
-            linkTo={`/chat/${sdrChannel.id}`}
-            cta="SDR Tasks"
-            attention={sdrChannel.unreadCount > 0}
-          />
-        )}
-      </div>
+      {displayChannels.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-7xl mb-10">
+          {displayChannels.map(channel => (
+            <DashboardCard
+              key={channel.id}
+              channelId={channel.id}
+              title={channel.name || 'Unnamed Channel'} // Use channel.name, provide fallback
+              value={channel.unreadCount}
+              icon={getIconForChannel(channel.id)}
+              linkTo={`/chat/${channel.id}`}
+              cta={`Open ${channel.name || 'Channel'}`}
+              attention={channel.unreadCount > 0}
+            />
+          ))}
+        </div>
+      )}
       
+      {displayChannels.length === 0 && channels.length > 0 && (
+         <div className="text-center text-slate-400 p-8 bg-slate-800 rounded-lg shadow-xl mt-10">
+            <h2 className="text-2xl font-semibold mb-3">Specified Channels Not Found</h2>
+            <p>The required sales channels for this view are not available. Please check the configuration or channel data.</p>
+        </div>
+      )}
+
       {channels.length === 0 && (
-         <div className="text-center text-slate-400 p-8 bg-slate-800 rounded-lg shadow-xl">
+         <div className="text-center text-slate-400 p-8 bg-slate-800 rounded-lg shadow-xl mt-10">
             <h2 className="text-2xl font-semibold mb-3">Channels Not Loaded</h2>
             <p>Sales channel data is currently unavailable. Please check configuration.</p>
         </div>
       )}
-
 
       <footer className="mt-auto pt-8 text-center text-slate-400 text-sm">
         <p>&copy; {new Date().getFullYear()} Sales Automation Platform. All rights reserved.</p>
