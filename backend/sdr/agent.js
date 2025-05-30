@@ -401,10 +401,20 @@ Generate the message:`;
         parts: [{ text: `Error generating message: ${error}`, type: "text" }],
       },
     };
-  } finally {
-    // Disconnect from WebSocket server
-    wsClient.disconnect();
   }
 }
+
+// Add connection maintenance
+setInterval(async () => {
+  if (!wsClient.isConnected) {
+    console.log("[SDR Agent] Connection check: WebSocket not connected, attempting to reconnect...");
+    try {
+      await wsClient.connect();
+      console.log("[SDR Agent] Successfully reconnected to WebSocket server");
+    } catch (error) {
+      console.error("[SDR Agent] Failed to reconnect to WebSocket server:", error);
+    }
+  }
+}, 30000); // Check every 30 seconds
 
 export { sdrAgent as demoAgent };
