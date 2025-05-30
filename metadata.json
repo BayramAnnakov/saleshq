@@ -1,6 +1,0 @@
-
-{
-  "name": "Sales Chat Dashboard",
-  "description": "A React application for a sales platform, featuring a dashboard with KPI notifications and a multi-channel chat interface. Simulates sales team communication and system alerts. Built with TypeScript and Tailwind CSS.",
-  "requestFramePermissions": []
-}
