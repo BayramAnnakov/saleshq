@@ -148,3 +148,7 @@ export const ChartIcon: React.FC<{ className?: string }> = ({ className }) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V9m4 8V5m4 12v-4" />
   </svg>
 );
+// Emoji for ChatInputBar
+export const SmileIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <span className={className} role="img" aria-label="smile emoji">😊</span>
+);

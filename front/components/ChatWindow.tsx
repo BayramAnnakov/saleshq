@@ -1,7 +1,9 @@
 
 import React, { useState, useEffect, useRef, JSX } from 'react'; // Added JSX
 import { Channel, Message, User } from '../types';
-import { SendIcon, CURRENT_USER_ID, UsersIcon } from '../constants';
+import { UsersIcon } from '../constants';
+import ChatMessageItemUI from './ChatMessageItem';
+import ChatInputBarUI from './ChatInputBar';
 
 interface ChatMessageItemProps {
   message: Message;
@@ -149,19 +151,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ channel, messages, onSen
           </div>
         )}
         {messages.map(msg => (
-          <ChatMessageItem
+          <ChatMessageItemUI
             key={msg.id}
             message={msg}
-            isCurrentUser={msg.senderId === currentUser.id}
             sender={getUserById(msg.senderId)}
+            currentUser={currentUser}
           />
         ))}
         <div ref={messagesEndRef} />
       </main>
 
-      <ChatInputBar 
-        onSendMessage={(text) => onSendMessage(channel.id, text)} 
-        isConnected={isConnected} 
+      <ChatInputBarUI
+        onSendMessage={(text) => onSendMessage(channel.id, text)}
+        channelName={channel.name}
       />
     </div>
   );

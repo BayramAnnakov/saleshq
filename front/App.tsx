@@ -190,21 +190,21 @@ const App: React.FC = () => {
 
   return (
     <HashRouter>
-      <div className="h-screen w-screen flex flex-col antialiased text-gray-800 overflow-hidden">
+      <div className="h-screen w-screen flex flex-col antialiased text-slate-200 bg-slate-900 overflow-hidden">
         <div className={`p-2 text-center text-xs text-white sticky top-0 z-50 ${
-            isConnected ? 'bg-green-600' : lastError ? 'bg-red-600' : 'bg-yellow-500 text-black'
+            isConnected ? 'bg-green-700' : lastError ? 'bg-red-700' : 'bg-yellow-600 text-black'
           }`}
           role="status"
           aria-live="polite"
         >
           WebSocket: {isConnected ? 'Connected' : (lastError || wsStatusDisplay)}
           {!isConnected && (
-            <button 
+            <button
               onClick={() => {
                 setWsStatusDisplay('Attempting to connect...');
                 connect(WEBSOCKET_SERVER_URL);
               }}
-              className="ml-2 px-2 py-0.5 border border-current rounded hover:bg-opacity-20 hover:bg-current text-xs"
+              className="ml-2 px-2 py-0.5 border border-current rounded hover:bg-white/20 transition-colors text-xs"
             >
               Reconnect
             </button>

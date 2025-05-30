@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>React Chat Dashboard</title>
+  <title>SalesHQ Control Tower</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     /* Custom scrollbar for webkit browsers */
@@ -12,18 +12,36 @@
       height: 8px;
     }
     ::-webkit-scrollbar-track {
-      background: #f1f1f1;
+      background: #1e293b; /* slate-800 */
       border-radius: 10px;
     }
     ::-webkit-scrollbar-thumb {
-      background: #888;
+      background: #475569; /* slate-600 */
       border-radius: 10px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #555;
+      background: #64748b; /* slate-500 */
     }
     body {
       overscroll-behavior-y: none; /* Prevent pull-to-refresh on mobile */
+      background-color: #0F172A; /* slate-900 */
+      color: #e2e8f0; /* slate-200 */
+    }
+    .custom-scrollbar-dark::-webkit-scrollbar-track {
+      background: #0f172a; /* slate-900 */
+    }
+    .custom-scrollbar-dark::-webkit-scrollbar-thumb {
+      background: #334155; /* slate-700 */
+    }
+    .custom-scrollbar-dark::-webkit-scrollbar-thumb:hover {
+      background: #475569; /* slate-600 */
+    }
+    .custom-scrollbar-dark {
+      scrollbar-width: thin;
+      scrollbar-color: #334155 #0f172a;
+    }
+    svg {
+      color: currentColor;
     }
   </style>
 <script type="importmap">
@@ -37,7 +55,7 @@
 }
 </script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-slate-900 text-slate-200">
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
