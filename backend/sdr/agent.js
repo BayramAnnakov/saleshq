@@ -16,7 +16,7 @@ if (!process.env.OPENAI_API_KEY) {
 
 // WebSocket configuration
 const WS_USER_ID = "system_bot_sdr";
-const WS_CHANNEL_ID = "channel_amazon";
+const WS_CHANNEL_ID = "Amazon";
 
 // Initialize WebSocket client
 const wsClient = new WebSocketClient('ws://localhost:8080');

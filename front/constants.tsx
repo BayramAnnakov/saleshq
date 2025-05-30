@@ -9,9 +9,9 @@ export const MOCK_DESIGN_USERS: User[] = [
   { id: CURRENT_USER_ID, name: 'You', avatarUrl: 'https://picsum.photos/seed/currentUser/100/100' },
   { id: 'bayram', name: 'Bayram', avatarUrl: 'https://picsum.photos/seed/bayram/100/100' },
   { id: 'merdan', name: 'Merdan', avatarUrl: 'https://picsum.photos/seed/merdan/100/100' },
-  { id: 'researcher', name: 'Researcher', avatarUrl: 'https://picsum.photos/seed/researcher/100/100' },
-  { id: 'sdr', name: 'SDR', avatarUrl: 'https://picsum.photos/seed/sdr/100/100' },
-  { id: 'scheduler', name: 'Scheduler', avatarUrl: 'https://picsum.photos/seed/scheduler/100/100' },
+  { id: 'system_bot_researcher', name: 'Researcher', avatarUrl: 'https://picsum.photos/seed/researcher/100/100' },
+  { id: 'system_bot_sdr', name: 'SDR', avatarUrl: 'https://picsum.photos/seed/sdr/100/100' },
+  { id: 'system_bot_scheduler', name: 'Scheduler', avatarUrl: 'https://picsum.photos/seed/scheduler/100/100' },
 ];
 
 // Combine all users for easier lookup.
