@@ -46,10 +46,11 @@ const DashboardCard: React.FC<DashboardCardProps> = ({ title, value, icon, linkT
 const DashboardPage: React.FC<DashboardPageProps> = ({ channels }) => {
   const getChannelById = (id: string) => channels.find(c => c.id === id);
 
-  const newLeadsChannel = getChannelById('channel_leads');
-  const followUpsChannel = getChannelById('channel_followups');
-  const proposalsChannel = getChannelById('channel_proposals');
-  const alertsChannel = getChannelById('channel_alerts');
+  const newLeadsChannel = getChannelById('channel_prospector');
+  const followUpsChannel = getChannelById('channel_researcher');
+  const proposalsChannel = getChannelById('channel_bayram');
+  const alertsChannel = getChannelById('channel_merdan');
+  const sdrChannel = getChannelById('channel_sdrbot');
 
   return (
     <div className="flex-grow flex flex-col items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-slate-900 to-slate-800 text-white min-h-screen">
@@ -62,7 +63,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ channels }) => {
         {newLeadsChannel && (
           <DashboardCard 
             channelId={newLeadsChannel.id}
-            title="New Leads"
+            title="ProspectorBot"
             value={newLeadsChannel.unreadCount}
             icon={<LeadsIcon className="w-8 h-8" />}
             linkTo={`/chat/${newLeadsChannel.id}`}
@@ -73,7 +74,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ channels }) => {
         {followUpsChannel && (
           <DashboardCard 
             channelId={followUpsChannel.id}
-            title="Follow-Ups Due"
+            title="ResearcherBot"
             value={followUpsChannel.unreadCount}
             icon={<FollowUpIcon className="w-8 h-8" />}
             linkTo={`/chat/${followUpsChannel.id}`}
@@ -84,7 +85,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ channels }) => {
         {proposalsChannel && (
           <DashboardCard 
             channelId={proposalsChannel.id}
-            title="Active Proposals"
+            title="Bayram"
             value={proposalsChannel.unreadCount}
             icon={<ProposalIcon className="w-8 h-8" />}
             linkTo={`/chat/${proposalsChannel.id}`}
@@ -95,12 +96,23 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ channels }) => {
         {alertsChannel && (
           <DashboardCard 
             channelId={alertsChannel.id}
-            title="Critical Alerts"
+            title="Merdan"
             value={alertsChannel.unreadCount}
             icon={<AlertIcon className="w-8 h-8" />}
             linkTo={`/chat/${alertsChannel.id}`}
             cta="Address Alerts"
             attention={alertsChannel.unreadCount > 0}
+          />
+        )}
+        {sdrChannel && (
+          <DashboardCard 
+            channelId={sdrChannel.id}
+            title="SDRBot"
+            value={sdrChannel.unreadCount}
+            icon={<FollowUpIcon className="w-8 h-8" />}
+            linkTo={`/chat/${sdrChannel.id}`}
+            cta="SDR Tasks"
+            attention={sdrChannel.unreadCount > 0}
           />
         )}
       </div>

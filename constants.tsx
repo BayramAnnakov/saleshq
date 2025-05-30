@@ -21,8 +21,8 @@ export const ALL_MOCK_USERS: User[] = MOCK_SALES_TEAM_USERS;
 // Sales KPI Channels
 export const INITIAL_CHANNELS: Channel[] = [
   {
-    id: 'channel_leads',
-    name: 'New Leads',
+    id: 'channel_prospector',
+    name: 'ProspectorBot',
     avatarUrl: 'https://picsum.photos/seed/leadsChannel/100/100',
     lastMessagePreview: 'No messages yet',
     lastMessageTimestamp: Date.now(), 
@@ -30,8 +30,8 @@ export const INITIAL_CHANNELS: Channel[] = [
     members: ALL_MOCK_USERS.filter(u => u.id !== 'user_sales_michael'), 
   },
   {
-    id: 'channel_followups',
-    name: 'Follow-Ups Due',
+    id: 'channel_researcher',
+    name: 'ResearcherBot',
     avatarUrl: 'https://picsum.photos/seed/followupsChannel/100/100',
     lastMessagePreview: 'No messages yet',
     lastMessageTimestamp: Date.now(),
@@ -39,8 +39,8 @@ export const INITIAL_CHANNELS: Channel[] = [
     members: ALL_MOCK_USERS.filter(u => u.id !== 'user_system_bot'), 
   },
   {
-    id: 'channel_proposals',
-    name: 'Active Proposals',
+    id: 'channel_bayram',
+    name: 'Bayram',
     avatarUrl: 'https://picsum.photos/seed/proposalsChannel/100/100',
     lastMessagePreview: 'No messages yet',
     lastMessageTimestamp: Date.now(),
@@ -48,9 +48,18 @@ export const INITIAL_CHANNELS: Channel[] = [
     members: ALL_MOCK_USERS.filter(u => !['user_system_bot'].includes(u.id)),
   },
   {
-    id: 'channel_alerts',
-    name: 'Critical Alerts',
+    id: 'channel_merdan',
+    name: 'Merdan',
     avatarUrl: 'https://picsum.photos/seed/alertsChannel/100/100',
+    lastMessagePreview: 'No messages yet',
+    lastMessageTimestamp: Date.now(),
+    unreadCount: 0,
+    members: ALL_MOCK_USERS, 
+  },
+  {
+    id: 'channel_sdrbot',
+    name: 'SDRBot',
+    avatarUrl: 'https://picsum.photos/seed/sdrChannel/100/100',
     lastMessagePreview: 'No messages yet',
     lastMessageTimestamp: Date.now(),
     unreadCount: 0,

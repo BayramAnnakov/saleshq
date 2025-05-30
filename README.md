@@ -7,21 +7,22 @@ Built with React, TypeScript, Tailwind CSS, and React Router. It uses Vite for d
 
 ## Features
 
-- **Dashboard Overview:** Displays 4 key sales KPIs (New Leads, Follow-Ups Due, Active Proposals, Critical Alerts) with unread notification counts.
+- **Dashboard Overview:** Displays 4 key sales KPIs (ProspectorBot, ResearcherBot, Bayram, Merdan) with unread notification counts.
 - **Direct Navigation:** Clicking a KPI card on the dashboard navigates to the relevant chat channel.
 - **Multi-Channel Chat:** Supports multiple chat channels, each corresponding to a sales KPI.
 - **Real-time WebSocket Messaging:** Connects to a WebSocket server to send and receive messages in real-time.
 - **Connection Status Indicator:** Displays the current status of the WebSocket connection at the top of the app.
 - **User-Specific Views:** Messages are displayed differently for the current user versus other users.
 - **Responsive Design:** Adapts to different screen sizes.
-- **URL-based Channel Navigation:** Chat channels can be accessed directly via URL (e.g., `/chat/channel_leads`).
+- **URL-based Channel Navigation:** Chat channels can be accessed directly via URL (e.g., `/chat/channel_prospector`).
 
 ## Key Sales KPIs / Chat Channels
 
-1.  **New Leads (`channel_leads`):** For tracking and discussing new incoming leads.
-2.  **Follow-Ups Due (`channel_followups`):** For reminders and coordination on scheduled follow-ups.
-3.  **Active Proposals (`channel_proposals`):** For discussions around proposals sent, feedback, and revisions.
-4.  **Critical Alerts (`channel_alerts`):** For urgent issues, support requests, or deals at risk.
+1.  **ProspectorBot (`channel_prospector`):** For tracking and discussing new incoming leads.
+2.  **ResearcherBot (`channel_researcher`):** For reminders and coordination on scheduled follow-ups.
+3.  **Bayram (`channel_bayram`):** For discussions around proposals sent, feedback, and revisions.
+4.  **Merdan (`channel_merdan`):** For urgent issues, support requests, or deals at risk.
+5.  **SDRBot (`channel_sdrbot`):** For managing SDR tasks and activities.
 
 ## Simulated Users (Sales Team)
 
@@ -175,14 +176,14 @@ curl -X POST -H "Content-Type: application/json" \
     "contactPerson": "John Doe",
     "value": 50000
   },
-  "notifyChannel": "channel_leads"
+  "notifyChannel": "channel_prospector"
 }' YOUR_BACKEND_API_URL/api/events
 ```
 
 **Backend Process:**
 1. The backend receives this HTTP request.
 2. Processes the event (e.g., creates a lead in the database).
-3. If applicable, constructs a `newMessage` payload (e.g., "SalesBot: New lead 'Globex Corp' created via CRM.") and broadcasts it via WebSockets to clients subscribed to the `channel_leads` channel.
+3. If applicable, constructs a `newMessage` payload (e.g., "SalesBot: New lead 'Globex Corp' created via CRM.") and broadcasts it via WebSockets to clients subscribed to the `channel_prospector` channel.
 
 ## Future Enhancements (Conceptual)
 
