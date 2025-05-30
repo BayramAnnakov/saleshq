@@ -5,7 +5,11 @@ import { handler } from './agent.js';
 config();
 
 // Validate required environment variables
-const requiredEnvVars = ['APIFY_TOKEN', 'ANTHROPIC_API_KEY'];
+const requiredEnvVars = [
+  'APIFY_TOKEN',
+  'OPENAI_API_KEY',
+  // 'ANTHROPIC_API_KEY'
+];
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
 if (missingEnvVars.length > 0) {

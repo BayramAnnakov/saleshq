@@ -1,13 +1,17 @@
 import { A2AClient } from "@artinet/sdk";
-import { createAgent, anthropic } from '@inngest/agent-kit';
+import { createAgent, openai /*, anthropic*/ } from '@inngest/agent-kit';
 import WebSocketClient from '../lib/websocket-client.js';
 import dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  throw new Error('ANTHROPIC_API_KEY environment variable is required');
+// if (!process.env.ANTHROPIC_API_KEY) {
+//   throw new Error('ANTHROPIC_API_KEY environment variable is required');
+// }
+
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY environment variable is required');
 }
 
 // WebSocket configuration
@@ -36,12 +40,18 @@ const sdrAgent = createAgent({
   system: `You are a professional Sales Development Representative (SDR) agent that generates personalized outreach messages.
 You receive prospect information and create engaging, personalized messages that reference the prospect's role, company, interests, and recent activities.
 Your messages should be professional, concise, and focused on starting a conversation about potential business opportunities.`,
-  model: anthropic({
-    model: 'claude-sonnet-4-20250514',
+  model: openai({
+    model: 'gpt-4.1-nano',
     defaultParameters: {
       max_tokens: 1000,
     },
   }),
+  // model: anthropic({
+  //   model: 'claude-sonnet-4-20250514',
+  //   defaultParameters: {
+  //     max_tokens: 1000,
+  //   },
+  // }),
 });
 
 // Set up message handler
@@ -53,23 +63,54 @@ wsClient.onMessage = async (message) => {
       return;
     }
 
+    // Ignore messages from other system bots
+    if (message.startsWith("system_bot_")) {
+      console.log("[SDR Agent] Ignoring message from system bot:", message);
+      return;
+    }
+
     const trimmedMessage = message.trim();
-    console.log("[SDR Agent] Processing trimmed message:", trimmedMessage);
+    console.log("[SDR Agent] Processing message:", trimmedMessage);
 
-    // Handle /start command
-    if (trimmedMessage.startsWith('/start')) {
-      console.log("[SDR Agent] Received start command");
+    // Use Claude to understand the user's intent
+    const intentPrompt = `Analyze the following message and determine if the user wants to:
+1. Start a new message generation process (e.g., "start", "generate", "create", "new message", etc.)
+2. Rewrite/modify an existing message (e.g., "rewrite", "modify", "change", "update", etc.)
+3. Something else
+
+Message: "${trimmedMessage}"
+
+IMPORTANT: Respond with ONLY a raw JSON object (no markdown formatting, no code blocks, no additional text).
+The response must be valid JSON that can be parsed directly.
+
+Required format:
+{
+  "intent": "start" | "rewrite" | "other",
+  "context": "extracted context or email if present",
+  "confidence": 0-1
+}`;
+
+    const { output } = await sdrAgent.run(intentPrompt);
+    let intentResult;
+    try {
+      // Clean the response to ensure it's valid JSON
+      const cleanedResponse = output[0].content.replace(/```json\n?|\n?```/g, '').trim();
+      intentResult = JSON.parse(cleanedResponse);
+      console.log("[SDR Agent] Intent analysis:", intentResult);
+    } catch (error) {
+      console.error("[SDR Agent] Error parsing intent analysis:", error);
+      console.log("[SDR Agent] Raw response:", output[0].content);
+      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "I'm having trouble understanding your request. Could you please try rephrasing it?");
+      return;
+    }
+
+    if (intentResult.intent === "start") {
+      console.log("[SDR Agent] Detected start intent");
       
-      // Extract the email after /start
+      // Use the email from context or default
       const email = "john@example.com";
-      console.log("[SDR Agent] Extracted email:", email);
+      console.log("[SDR Agent] Using email:", email);
       
-      if (!email) {
-        console.log("[SDR Agent] No email provided in start command");
-        wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: Please provide an email address after /start command");
-        return;
-      }
-
       // Create a mock userMessage object similar to what the A2A server would send
       const userMessage = {
         role: "user",
@@ -98,19 +139,18 @@ wsClient.onMessage = async (message) => {
       return;
     }
 
-    // Handle /rewrite command
-    if (trimmedMessage.startsWith('/rewrite')) {
-      console.log("[SDR Agent] Received rewrite command");
-      
-      // Extract the context after /rewrite
-      const context = trimmedMessage.substring('/rewrite'.length).trim();
-      console.log("[SDR Agent] Extracted rewrite context:", context);
+    if (intentResult.intent === "rewrite") {
+      console.log("[SDR Agent] Detected rewrite intent");
       
       if (!lastGeneratedMessage || !lastMessageContext) {
         console.log("[SDR Agent] No previous message to rewrite");
-        wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: No previous message to rewrite. Please generate a message first using /start command.");
+        wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: No previous message to rewrite. Please generate a message first.");
         return;
       }
+      
+      // Use the context from intent analysis
+      const context = intentResult.context || "No specific context provided";
+      console.log("[SDR Agent] Using rewrite context:", context);
       
       // Prepare rewrite prompt with additional context
       const rewritePrompt = `Rewrite the following outreach message with the additional context provided.
@@ -119,7 +159,7 @@ Original Message:
 ${lastGeneratedMessage}
 
 Additional Context:
-${context || 'No additional context provided'}
+${context}
 
 Original Prospect Information:
 - Name: ${lastMessageContext.prospect.name}
@@ -148,7 +188,8 @@ Rewrite the message:`;
       // Send the rewritten message back through WebSocket
       wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, rewrittenMessage);
     } else {
-      console.log("[SDR Agent] Unknown command:", trimmedMessage);
+      console.log("[SDR Agent] Unknown intent:", intentResult.intent);
+      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "I'm not sure what you want me to do. You can ask me to generate a new message or rewrite the existing one.");
     }
   } catch (error) {
     console.error("[SDR Agent] Error handling WebSocket message:", error);

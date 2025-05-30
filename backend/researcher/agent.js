@@ -5,7 +5,7 @@
  * that provides prospect information using AgentKit and Apify's website crawler.
  */
 
-import { createAgent, anthropic } from '@inngest/agent-kit';
+import { createAgent, openai /*, anthropic*/ } from '@inngest/agent-kit';
 import { crawlWebsite, initializeMCPClient } from './apify-client.js';
 import WebSocketClient from '../lib/websocket-client.js';
 import dotenv from 'dotenv';
@@ -13,8 +13,12 @@ import dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  throw new Error('ANTHROPIC_API_KEY environment variable is required');
+// if (!process.env.ANTHROPIC_API_KEY) {
+//   throw new Error('ANTHROPIC_API_KEY environment variable is required');
+// }
+
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY environment variable is required');
 }
 
 // WebSocket configuration
@@ -57,12 +61,18 @@ You have access to a prospect database and can look up information about specifi
 You can also crawl prospect websites to gather additional information about their company and recent activities.
 You should provide comprehensive information about prospects including their name, company, role, interests, recent activities, and insights from their website.
 Always verify that the prospect exists in the database before providing information.`,
-  model: anthropic({
-    model: 'claude-sonnet-4-20250514',
+  model: openai({
+    model: 'gpt-4.1-nano',
     defaultParameters: {
       max_tokens: 1000,
     },
   }),
+  // model: anthropic({
+  //   model: 'claude-sonnet-4-20250514',
+  //   defaultParameters: {
+  //     max_tokens: 1000,
+  //   },
+  // }),
 });
 
 console.log('[Researcher Agent] Agent configuration created');
@@ -88,6 +98,12 @@ export async function* handler(context) {
     .filter((part) => part.type === "text")
     .map((part) => part.text)
     .join(" ");
+
+  // Ignore messages from other system bots
+  if (prospectEmail.startsWith("system_bot_")) {
+    console.log("[Researcher Agent] Ignoring message from system bot:", prospectEmail);
+    return;
+  }
 
   console.log(`[Researcher Agent] Received prospect email: ${prospectEmail}`);
   wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Processing request for prospect: ${prospectEmail}`);
