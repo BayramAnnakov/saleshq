@@ -22,9 +22,11 @@ const WS_CHANNEL_ID = "Amazon";
 const wsClient = new WebSocketClient('ws://localhost:8080');
 
 // Track the last message we sent to prevent processing our own messages
-let lastSentMessage = null;
-let lastSentTimestamp = 0;
-const MESSAGE_DEDUPLICATION_WINDOW = 5000; // 5 seconds
+let lastGeneratedMessage = null;
+let lastMessageContext = null;
+
+// Track processed message IDs to prevent duplicates
+const processedMessageIds = new Set();
 
 // Connect to WebSocket server immediately
 console.log("[SDR Agent] Attempting to connect to WebSocket server...");
@@ -32,11 +34,12 @@ wsClient.connect().then(() => {
   console.log("[SDR Agent] Successfully connected to WebSocket server");
 }).catch(error => {
   console.error("[SDR Agent] Failed to connect to WebSocket server:", error);
+  // Attempt to reconnect after a delay
+  setTimeout(() => {
+    console.log("[SDR Agent] Attempting to reconnect...");
+    wsClient.connect();
+  }, 5000);
 });
-
-// Store the last generated message and context
-let lastGeneratedMessage = null;
-let lastMessageContext = null;
 
 // Create the agent configuration
 const sdrAgent = createAgent({
@@ -59,19 +62,6 @@ Your messages should be professional, concise, and focused on starting a convers
   // }),
 });
 
-// Modify the sendMessage function to track sent messages with timestamps
-const originalSendMessage = wsClient.sendMessage;
-wsClient.sendMessage = function(userId, channelId, message) {
-  const now = Date.now();
-  // Only update if it's a new message or outside the deduplication window
-  if (message !== lastSentMessage || (now - lastSentTimestamp) > MESSAGE_DEDUPLICATION_WINDOW) {
-    lastSentMessage = message;
-    lastSentTimestamp = now;
-    return originalSendMessage.call(this, userId, channelId, message);
-  }
-  return Promise.resolve(); // Skip duplicate message
-};
-
 // Set up message handler
 wsClient.onMessage = async (message) => {
   console.log("[SDR Agent] Received message:", message);
@@ -81,16 +71,26 @@ wsClient.onMessage = async (message) => {
       return;
     }
 
+    // Check if we've already processed this message
+    if (message.id && processedMessageIds.has(message.id)) {
+      console.log("[SDR Agent] Ignoring already processed message:", message.id);
+      return;
+    }
+
+    // Add message ID to processed set
+    if (message.id) {
+      processedMessageIds.add(message.id);
+    }
+
     // Ignore messages from other system bots
     if (message.senderId.startsWith("system_bot_")) {
       console.log("[SDR Agent] Ignoring message from system bot:", message.senderId);
       return;
     }
 
-    // Ignore our own messages and recent duplicates
-    if (message.senderId === WS_USER_ID || 
-        (message.text === lastSentMessage && (Date.now() - lastSentTimestamp) < MESSAGE_DEDUPLICATION_WINDOW)) {
-      console.log("[SDR Agent] Ignoring own message or recent duplicate");
+    // Ignore our own messages
+    if (message.senderId === WS_USER_ID) {
+      console.log("[SDR Agent] Ignoring own message");
       return;
     }
 
@@ -153,7 +153,11 @@ Required format:
             // Store the generated message and context for potential rewrites
             lastGeneratedMessage = response.message.parts[0].text;
             console.log("[SDR Agent] Stored generated message:", lastGeneratedMessage);
-            // Note: lastMessageContext is already set in the handler
+            
+            // Send the message through WebSocket
+            console.log("[SDR Agent] Sending message through WebSocket...");
+            await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, lastGeneratedMessage);
+            console.log("[SDR Agent] Message sent successfully");
           }
         }
       } catch (error) {
@@ -176,49 +180,39 @@ Required format:
       const context = intentResult.context || "No specific context provided";
       console.log("[SDR Agent] Using rewrite context:", context);
       
-      // Prepare rewrite prompt with additional context
-      const rewritePrompt = `Rewrite the following outreach message with the additional context provided.
-      
-Original Message:
-${lastGeneratedMessage}
+      // Create a mock userMessage object for the handler
+      const userMessage = {
+        role: "user",
+        parts: [{ type: "text", text: "rewrite" }],
+      };
 
-Additional Context:
-${context}
+      // Create a mock isCancelled function
+      const isCancelled = () => false;
 
-Original Prospect Information:
-- Name: ${lastMessageContext.prospect.name}
-- Role: ${lastMessageContext.prospect.role}
-- Company: ${lastMessageContext.prospect.company}
-${lastMessageContext.prospect.interests ? `- Interests: ${lastMessageContext.prospect.interests.join(", ")}` : ""}
-${lastMessageContext.prospect.recentActivity ? `- Recent Activity: ${lastMessageContext.prospect.recentActivity.join(", ")}` : ""}
-
-Requirements:
-1. Maintain the core message structure
-2. Incorporate the new context naturally
-3. Keep the message concise (max 3-4 paragraphs)
-4. Maintain a professional but conversational tone
-5. Ensure the call to action remains clear
-6. Always sign the message with "Bayram" as the sender name
-
-Rewrite the message:`;
-
-      console.log("[SDR Agent] Generating rewritten message...");
-      const { output } = await sdrAgent.run(rewritePrompt);
-      const rewrittenMessage = output[0].content;
-      
-      // Update the last generated message
-      lastGeneratedMessage = rewrittenMessage;
-      console.log("[SDR Agent] Stored rewritten message:", lastGeneratedMessage);
-      
-      // Send the rewritten message back through WebSocket
-      await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, rewrittenMessage);
-      
-      // Return early to prevent further processing
+      // Process the request using the handler
+      try {
+        console.log("[SDR Agent] Starting message rewrite process");
+        for await (const response of handler({ userMessage, isCancelled, rewriteContext: context })) {
+          console.log("[SDR Agent] Handler response:", response);
+          if (response.state === "completed") {
+            // Store the generated message and context for potential rewrites
+            lastGeneratedMessage = response.message.parts[0].text;
+            console.log("[SDR Agent] Stored rewritten message:", lastGeneratedMessage);
+            
+            // Send the message through WebSocket
+            console.log("[SDR Agent] Sending rewritten message through WebSocket...");
+            await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, lastGeneratedMessage);
+            console.log("[SDR Agent] Rewritten message sent successfully");
+          }
+        }
+      } catch (error) {
+        console.error("[SDR Agent] Error processing rewrite command:", error);
+        wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Error processing request: ${error.message}`);
+      }
       return;
     } else {
       console.log("[SDR Agent] Unknown intent:", intentResult.intent);
       wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "I'm not sure what you want me to do. You can ask me to generate a new message or rewrite the existing one.");
-      return;
     }
   } catch (error) {
     console.error("[SDR Agent] Error handling WebSocket message:", error);
@@ -227,7 +221,7 @@ Rewrite the message:`;
 };
 
 // Export the handler function that A2A server expects
-export async function* handler({ userMessage, isCancelled }) {
+export async function* handler({ userMessage, isCancelled, rewriteContext }) {
   console.log("\n[SDR Agent] Starting to process new request...");
   
   // Connect to WebSocket server
@@ -250,12 +244,59 @@ export async function* handler({ userMessage, isCancelled }) {
     .map((part) => part.text)
     .join(" ");
 
-  console.log(`[SDR Agent] Received prospect email: ${prospectEmail}`);
-  await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Processing request for prospect: ${prospectEmail}`);
+  // Handle rewrite case
+  if (prospectEmail === "rewrite" && rewriteContext) {
+    console.log("[SDR Agent] Processing rewrite request");
+    
+    // Prepare rewrite prompt with additional context
+    const rewritePrompt = `Rewrite the following outreach message with the additional context provided.
+    
+Original Message:
+${lastGeneratedMessage}
 
+Additional Context:
+${rewriteContext}
+
+Original Prospect Information:
+- Name: ${lastMessageContext.prospect.name}
+- Role: ${lastMessageContext.prospect.role}
+- Company: ${lastMessageContext.prospect.company}
+${lastMessageContext.prospect.interests ? `- Interests: ${lastMessageContext.prospect.interests.join(", ")}` : ""}
+${lastMessageContext.prospect.recentActivity ? `- Recent Activity: ${lastMessageContext.prospect.recentActivity.join(", ")}` : ""}
+
+Requirements:
+1. Maintain the core message structure
+2. Incorporate the new context naturally
+3. Keep the message concise (max 3-4 paragraphs)
+4. Maintain a professional but conversational tone
+5. Ensure the call to action remains clear
+6. Always sign the message with "Bayram" as the sender name and "SalesHQ" as the company name
+
+Rewrite the message:`;
+
+    console.log("[SDR Agent] Generating rewritten message...");
+    const { output } = await sdrAgent.run(rewritePrompt);
+    const rewrittenMessage = output[0].content
+      .replace(/\[Your Name\]/g, 'Bayram')
+      .replace(/\[Your Company\]/g, 'SalesHQ');
+    
+    // Update the last generated message
+    lastGeneratedMessage = rewrittenMessage;
+    
+    // Yield the rewritten message
+    yield {
+      state: "completed",
+      message: {
+        role: "agent",
+        parts: [{ text: rewrittenMessage, type: "text" }],
+      },
+    };
+    return;
+  }
+
+  // Rest of the handler code for initial message generation...
   if (!prospectEmail) {
     console.log("[SDR Agent] Error: No prospect email provided");
-    await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: No prospect email provided");
     yield {
       state: "failed",
       message: {
@@ -269,7 +310,6 @@ export async function* handler({ userMessage, isCancelled }) {
   try {
     // Get prospect information from researcher agent
     console.log("[SDR Agent] Creating client to communicate with Researcher agent...");
-    await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Fetching prospect information from Researcher agent...");
     const researcherClient = new A2AClient("http://localhost:3000/api");
 
     console.log("[SDR Agent] Sending request to Researcher agent...");
@@ -285,7 +325,6 @@ export async function* handler({ userMessage, isCancelled }) {
 
     if (!researcherTask || researcherTask.status.state === "failed") {
       console.log("[SDR Agent] Error: Failed to get prospect info from Researcher agent");
-      await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: Failed to get prospect information");
       yield {
         state: "failed",
         message: {
@@ -307,7 +346,6 @@ export async function* handler({ userMessage, isCancelled }) {
     if (!researcherData || !researcherData.prospect) {
       console.log("[SDR Agent] Error: Failed to parse prospect information");
       console.log("[SDR Agent] Received data:", JSON.stringify(researcherData, null, 2));
-      await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: Failed to parse prospect information");
       yield {
         state: "failed",
         message: {
@@ -320,12 +358,10 @@ export async function* handler({ userMessage, isCancelled }) {
 
     const prospectInfo = researcherData.prospect;
     console.log("[SDR Agent] Successfully received prospect info:", JSON.stringify(prospectInfo, null, 2));
-    await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Successfully retrieved prospect information. Generating personalized message...");
 
     // Check for task cancellation
     if (isCancelled()) {
       console.log("[SDR Agent] Task was cancelled");
-      await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Processing has been cancelled.");
       yield {
         state: "canceled",
         message: {
@@ -387,13 +423,14 @@ Requirements:
 Generate the message:`;
 
     const { output } = await sdrAgent.run(messagePrompt);
-    const personalizedMessage = output[0].content;
+    const personalizedMessage = output[0].content
+      .replace(/\[Your Name\]/g, 'Bayram')
+      .replace(/\[Your Company\]/g, 'SalesHQ');
     
     // Store the generated message for potential rewrites
     lastGeneratedMessage = personalizedMessage;
     
     console.log("[SDR Agent] Message generation completed");
-    await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, personalizedMessage);
 
     // Yield a completed status with the personalized message
     yield {
@@ -405,7 +442,6 @@ Generate the message:`;
     };
   } catch (error) {
     console.error("[SDR Agent] Error generating message:", error);
-    await wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Error generating message: ${error}`);
     yield {
       state: "failed",
       message: {
