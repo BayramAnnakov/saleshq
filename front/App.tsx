@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Channel, Message, User } from './types';
 import { INITIAL_CHANNELS, ALL_MOCK_USERS, CURRENT_USER_ID } from './constants';
-import DashboardPage from './pages/DashboardPage';
+import ControlTowerPage from './pages/ControlTowerPage';
 import ChatPage from './pages/ChatPage';
 import { useAppWebSocket } from './hooks/useAppWebSocket';
 
@@ -214,7 +214,7 @@ const App: React.FC = () => {
         <div className="flex-grow overflow-hidden flex flex-col"> {/* Added to contain routes and allow scrolling if needed */}
           <Routes>
             <Route path="/" element={
-              <DashboardPage 
+              <ControlTowerPage
                 channels={channels}
               />
             }/>
