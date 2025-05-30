@@ -16,7 +16,6 @@ if (existsSync(envPath)) {
   console.log('.env file exists');
   try {
     const envContent = readFileSync(envPath, 'utf8');
-    console.log('.env file content (first line):', envContent.split('\n')[0]);
   } catch (err) {
     console.error('Error reading .env file:', err);
   }

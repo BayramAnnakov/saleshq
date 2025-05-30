@@ -1,6 +1,6 @@
 import { A2AServer, InMemoryTaskStore } from "@artinet/sdk";
 import { handler } from "./agent.js";
-import { agentCard } from "./lib/card.js";
+import { agentCard } from "../lib/card.js";
 
 // Create a server
 const server = new A2AServer({

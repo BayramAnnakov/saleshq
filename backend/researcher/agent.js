@@ -7,6 +7,7 @@
 
 import { createAgent, anthropic } from '@inngest/agent-kit';
 import { crawlWebsite, initializeMCPClient } from './apify-client.js';
+import WebSocketClient from '../lib/websocket-client.js';
 import dotenv from 'dotenv';
 
 // Load environment variables
@@ -15,6 +16,13 @@ dotenv.config();
 if (!process.env.ANTHROPIC_API_KEY) {
   throw new Error('ANTHROPIC_API_KEY environment variable is required');
 }
+
+// WebSocket configuration
+const WS_USER_ID = "system_bot_researcher";
+const WS_CHANNEL_ID = "channel_amazon";
+
+// Initialize WebSocket client
+const wsClient = new WebSocketClient('ws://localhost:8080');
 
 console.log('[Researcher Agent] Initializing...');
 
@@ -68,6 +76,13 @@ console.log('[Researcher Agent] Apify MCP client initialized');
 export async function* handler(context) {
   console.log("\n[Researcher Agent] Starting to process new request...");
   
+  // Connect to WebSocket server
+  try {
+    await wsClient.connect();
+  } catch (error) {
+    console.error("[Researcher Agent] Failed to connect to WebSocket server:", error);
+  }
+  
   // Extract the user's message (expecting an email)
   const prospectEmail = context.userMessage.parts
     .filter((part) => part.type === "text")
@@ -75,6 +90,7 @@ export async function* handler(context) {
     .join(" ");
 
   console.log(`[Researcher Agent] Received prospect email: ${prospectEmail}`);
+  wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Processing request for prospect: ${prospectEmail}`);
 
   yield {
     state: "working",
@@ -86,6 +102,7 @@ export async function* handler(context) {
 
   if (!prospectEmail) {
     console.log("[Researcher Agent] Error: No prospect email provided");
+    wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Error: No prospect email provided");
     yield {
       state: "failed",
       message: {
@@ -100,6 +117,7 @@ export async function* handler(context) {
 
   if (!prospectInfo) {
     console.log(`[Researcher Agent] Error: No information found for prospect: ${prospectEmail}`);
+    wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Error: No information found for prospect: ${prospectEmail}`);
     yield {
       state: "failed",
       message: {
@@ -111,10 +129,12 @@ export async function* handler(context) {
   }
 
   console.log("[Researcher Agent] Found prospect info:", JSON.stringify(prospectInfo, null, 2));
+  wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Found prospect information. Gathering additional details...");
 
   // Check for task cancellation
   if (context.isCancelled()) {
     console.log("[Researcher Agent] Task was cancelled");
+    wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Processing has been cancelled.");
     yield {
       state: "canceled",
       message: {
@@ -130,6 +150,7 @@ export async function* handler(context) {
   if (prospectInfo.website) {
     try {
       console.log(`[Researcher Agent] Starting website crawl for: ${prospectInfo.website}`);
+      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Crawling website: ${prospectInfo.website}`);
       yield {
         state: "working",
         message: {
@@ -140,9 +161,11 @@ export async function* handler(context) {
       
       websiteData = await crawlWebsite(prospectInfo.website);
       console.log("[Researcher Agent] Website crawl completed successfully");
+      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Website crawl completed successfully");
       
       // Process and structure the website data
       console.log("[Researcher Agent] Processing website data...");
+      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Processing website data...");
       const processedData = {
         companyInfo: {
           description: websiteData.description || "No description available",
@@ -163,6 +186,7 @@ export async function* handler(context) {
       websiteData = processedData;
     } catch (error) {
       console.error("[Researcher Agent] Error crawling website:", error);
+      wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, `Error crawling website: ${error.message}`);
       console.error("[Researcher Agent] Error details:", {
         message: error.message,
         code: error.code,
@@ -177,6 +201,7 @@ export async function* handler(context) {
 
   // Combine prospect info with website data
   console.log("[Researcher Agent] Combining prospect and website data...");
+  wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Combining all prospect information...");
   const combinedData = {
     prospect: {
       ...prospectInfo,
@@ -194,7 +219,7 @@ export async function* handler(context) {
   };
 
   console.log("[Researcher Agent] Data combination completed");
-  console.log("[Researcher Agent] Sending combined prospect info back to SDR agent");
+  wsClient.sendMessage(WS_USER_ID, WS_CHANNEL_ID, "Research completed successfully");
   
   // Yield a completed status with combined information
   yield {
@@ -209,5 +234,8 @@ export async function* handler(context) {
   };
   
   console.log("[Researcher Agent] Request processing completed");
+  
+  // Disconnect from WebSocket server
+  wsClient.disconnect();
 }
 
