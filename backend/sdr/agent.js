@@ -187,12 +187,9 @@ Requirements:
 
 Generate the message:`;
 
-    const messageResponse = await sdrAgent.model.complete({
-      messages: [{ role: "user", content: messagePrompt }],
-      max_tokens: 500
-    });
-
-    const personalizedMessage = messageResponse.content.trim();
+    const { output } = await sdrAgent.run(messagePrompt);
+    const personalizedMessage = output[0].content;
+    
     console.log("[SDR Agent] Message generation completed");
     wsClient.sendMessage(personalizedMessage);
 
