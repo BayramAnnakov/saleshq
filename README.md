@@ -45,4 +45,4 @@ All of it runs end-to-end in **TypeScript**.
 *Built in 8 caffeine-fueled hours by Bayram & Merdan.*
 
 ## Resources 📚
-* [Project Deck](20250530_AWSMCPHack_salesHQ.pdf) - Detailed presentation of SalesHQ's architecture and features
+* [Project Deck](20250530_AWSMCPHack_SalesHQ.pdf) - Detailed presentation of SalesHQ's architecture and features
