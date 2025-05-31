@@ -43,3 +43,6 @@ All of it runs end-to-end in **TypeScript**.
 * Open-source agent templates so any dev team can plug their own bots into SalesHQ.
 
 *Built in 8 caffeine-fueled hours by Bayram & Merdan.*
+
+## Resources 📚
+* [Project Deck](20250530_AWSMCPHack_salesHQ.pdf) - Detailed presentation of SalesHQ's architecture and features
